@@ -23,6 +23,9 @@ export const metadata: Metadata = {
     description: 'Where beauty meets excellence.',
     type: 'website',
   },
+  
+};
+export const viewport = {
   themeColor: '#B8860B',
 };
 

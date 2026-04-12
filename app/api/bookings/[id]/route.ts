@@ -3,16 +3,17 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const { status } = await req.json();
     const supabase = await createClient();
 
     const { error } = await supabase
       .from('bookings')
       .update({ status })
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (error) throw error;
 
