@@ -10,10 +10,18 @@ const config: Config = {
     extend: {
       colors: {
         gold: '#B8860B',
+        ivory: '#F5F0E8',
       },
       fontFamily: {
-        heading: ['var(--font-heading)', 'serif'],
-        body: ['var(--font-body)', 'sans-serif'],
+        display: ['var(--font-display)', 'serif'],
+        sans: ['var(--font-sans)', 'sans-serif'],
+      },
+      letterSpacing: {
+        luxury: '0.4em',
+        'ultra-wide': '0.6em',
+      },
+      lineHeight: {
+        luxury: '1.8',
       },
     },
   },

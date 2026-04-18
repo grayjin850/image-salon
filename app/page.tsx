@@ -4,6 +4,7 @@ import { ServiceMenu } from '@/components/sections/service-menu';
 import { GalleryGrid } from '@/components/sections/gallery-grid';
 import { Testimonials } from '@/components/sections/testimonials';
 import { BookingForm } from '@/components/sections/booking-form';
+import { Loader } from '@/components/ui/loader';
 
 export default function Home() {
   return (
@@ -14,6 +15,7 @@ export default function Home() {
       <GalleryGrid />
       <Testimonials />
       <BookingForm />
+      <Loader />
     </>
   );
 }

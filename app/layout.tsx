@@ -1,18 +1,21 @@
 import type { Metadata } from 'next';
-import { Playfair_Display, Lato } from 'next/font/google';
+import { Cormorant_Garamond, Raleway } from 'next/font/google';
 import { Nav } from '@/components/layout/nav';
 import { Footer } from '@/components/layout/footer';
 import './globals.css';
+import { Cursor } from '@/components/ui/cursor';
 
-const playfair = Playfair_Display({
+const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
-  variable: '--font-heading',
+  weight: ['300', '400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-display',
 });
 
-const lato = Lato({
+const raleway = Raleway({
   subsets: ['latin'],
-  weight: ['300', '400', '700'],
-  variable: '--font-body',
+  weight: ['300', '400', '500', '600'],
+  variable: '--font-sans',
 });
 
 export const metadata: Metadata = {
@@ -23,8 +26,8 @@ export const metadata: Metadata = {
     description: 'Where beauty meets excellence.',
     type: 'website',
   },
-  
 };
+
 export const viewport = {
   themeColor: '#B8860B',
 };
@@ -36,7 +39,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${playfair.variable} ${lato.variable} bg-black text-white antialiased font-body`}>
+      <body className={`${cormorant.variable} ${raleway.variable} bg-black text-white antialiased`}>
+        <Cursor />
         <Nav />
         <main>{children}</main>
         <Footer />

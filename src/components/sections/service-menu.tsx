@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Service } from '@/types';
 
 export function ServiceMenu() {
   const [services, setServices] = useState<Service[]>([]);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchServices = async () => {
       const supabase = createClient();
       const { data } = await supabase
         .from('services')
@@ -17,36 +18,63 @@ export function ServiceMenu() {
         .order('sort_order');
       if (data) setServices(data);
     };
-    fetch();
+    fetchServices();
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.querySelectorAll('.reveal-col').forEach((el, i) => {
+              setTimeout(() => el.classList.add('visible'), i * 120);
+            });
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
   }, []);
 
   const categories = ['hair', 'skin', 'nails', 'packages'];
 
   return (
-    <section className="py-24 bg-[#0a0a0a]">
-      <div className="max-w-6xl mx-auto px-6">
-        <p className="text-[#B8860B] uppercase tracking-[0.5em] text-xs text-center mb-4">
-          Pricing
-        </p>
-        <h2 className="font-heading text-4xl md:text-5xl text-white text-center mb-16">
+    <section className="py-32 bg-[#050505]" ref={sectionRef}>
+      <div className="max-w-7xl mx-auto px-8">
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <div className="h-px w-16 bg-[#B8860B]/50" />
+          <p className="text-[#B8860B] uppercase tracking-[0.6em] text-xs font-sans">
+            Pricing
+          </p>
+          <div className="h-px w-16 bg-[#B8860B]/50" />
+        </div>
+        <h2 className="font-display text-5xl md:text-6xl text-white font-light italic text-center mb-20">
           Service Menu
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-16">
           {categories.map((cat) => {
             const items = services.filter((s) => s.category === cat);
             if (items.length === 0) return null;
             return (
-              <div key={cat}>
-                <h3 className="text-[#B8860B] uppercase tracking-widest text-sm font-semibold mb-4">
-                  {cat}
+              <div
+                key={cat}
+                className="reveal-col opacity-0 translate-y-4"
+                style={{ transition: 'opacity 0.7s ease, transform 0.7s ease' }}
+              >
+                <h3 className="font-display text-2xl italic text-[#B8860B] font-light mb-2">
+                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
                 </h3>
-                <div className="border-t border-[#B8860B]/30 mb-4" />
-                <ul className="space-y-3">
+                <div className="h-px bg-gradient-to-r from-[#B8860B] to-transparent mb-6" />
+                <ul className="space-y-4">
                   {items.map((s) => (
-                    <li key={s.id} className="flex justify-between text-sm">
-                      <span className="text-gray-300">{s.name}</span>
-                      <span className="text-[#B8860B]">{s.price_label}</span>
+                    <li key={s.id} className="flex items-center justify-between gap-4">
+                      <span className="text-gray-300 text-xs font-sans tracking-wide">{s.name}</span>
+                      <div className="flex-1 border-b border-dotted border-gray-800" />
+                      {/* ⚠️ price_label comes from Supabase — update prices in the Supabase dashboard */}
+                      <span className="text-[#B8860B] text-xs font-sans whitespace-nowrap">{s.price_label}</span>
                     </li>
                   ))}
                 </ul>
@@ -54,7 +82,19 @@ export function ServiceMenu() {
             );
           })}
         </div>
+
+        {/* Price update notice — remove after updating Supabase */}
+        <p className="text-center text-gray-700 text-[10px] uppercase tracking-[0.3em] font-sans mt-16">
+          Prices are managed via the admin dashboard
+        </p>
       </div>
+
+      <style>{`
+        .reveal-col.visible {
+          opacity: 1 !important;
+          transform: translateY(0) !important;
+        }
+      `}</style>
     </section>
   );
 }
