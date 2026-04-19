@@ -4,6 +4,7 @@ import { Nav } from '@/components/layout/nav';
 import { Footer } from '@/components/layout/footer';
 import './globals.css';
 import { Cursor } from '@/components/ui/cursor';
+import { headers } from 'next/headers';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -41,7 +42,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${cormorant.variable} ${raleway.variable} bg-black text-white antialiased`}>
         <Cursor />
-        <Nav />
+         <Nav />
         <main>{children}</main>
         <Footer />
       </body>

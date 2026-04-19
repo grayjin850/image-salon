@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { NAV_LINKS } from '@/constants';
 
 export function Nav() {
@@ -26,14 +27,35 @@ export function Nav() {
   }, []);
 
   const handleNavClick = (href: string) => {
-    setIsOpen(false);
-    const id = href.replace('#', '');
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  };
+  setIsOpen(false);
+
+  // Kung may / prefix — direct navigation (e.g. /booking)
+  if (href.startsWith('/')) {
+    window.location.href = href;
+    return;
+  }
+
+  const id = href.replace('#', '');
+
+  // Kung nasa ibang page, pumunta muna sa home tapos scroll
+  if (window.location.pathname !== '/') {
+    window.location.href = '/' + href;
+    return;
+  }
+
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+};
+
+  const linkClass = (href: string) =>
+    `text-[10px] uppercase tracking-[0.4em] font-sans transition-colors duration-300 ${
+      activeSection === href.replace('#', '')
+        ? 'text-[#B8860B]'
+        : 'text-gray-300 hover:text-[#B8860B]'
+    }`;
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-500 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled
           ? 'bg-black/95 backdrop-blur-md border-b border-[#B8860B]/30'
           : 'bg-transparent'
@@ -60,10 +82,10 @@ export function Nav() {
       {/* Main navbar */}
       <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
         {/* Logo + Name */}
-        <button
-          onClick={() => handleNavClick('#home')}
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-        >
+       <Link
+  href="/"
+  className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+>
           <Image
             src="/images/logo.png"
             alt="Image Salon & Spa"
@@ -79,22 +101,24 @@ export function Nav() {
               Where Beauty Meets Excellence
             </span>
           </div>
-        </button>
+        </Link>
 
         {/* Desktop links */}
         <ul className="hidden md:flex gap-10">
           {NAV_LINKS.map((link) => (
             <li key={link.href}>
-              <button
-                onClick={() => handleNavClick(link.href)}
-                className={`text-[10px] uppercase tracking-[0.4em] font-sans transition-colors duration-300 ${
-                  activeSection === link.href.replace('#', '')
-                    ? 'text-[#B8860B]'
-                    : 'text-gray-300 hover:text-[#B8860B]'
-                }`}
-              >
-                {link.label}
-              </button>
+              {link.href.startsWith('/') ? (
+                <Link href={link.href} className={linkClass(link.href)}>
+                  {link.label}
+                </Link>
+              ) : (
+                <button
+                  onClick={() => handleNavClick(link.href)}
+                  className={linkClass(link.href)}
+                >
+                  {link.label}
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -139,21 +163,38 @@ export function Nav() {
             </p>
           </div>
           {NAV_LINKS.map((link) => (
-            <button
-              key={link.href}
-              onClick={() => handleNavClick(link.href)}
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: '2.5rem',
-                fontStyle: 'italic',
-                color: activeSection === link.href.replace('#', '') ? '#B8860B' : 'white',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              {link.label}
-            </button>
+            link.href.startsWith('/') ? (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '2.5rem',
+                  fontStyle: 'italic',
+                  color: '#B8860B',
+                  textDecoration: 'none',
+                }}
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <button
+                key={link.href}
+                onClick={() => handleNavClick(link.href)}
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '2.5rem',
+                  fontStyle: 'italic',
+                  color: activeSection === link.href.replace('#', '') ? '#B8860B' : 'white',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {link.label}
+              </button>
+            )
           ))}
           <p className="text-[#B8860B]/50 text-[10px] uppercase tracking-[0.3em] font-sans mt-4">
             +691 320 3289

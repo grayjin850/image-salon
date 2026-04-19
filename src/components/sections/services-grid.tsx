@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Service } from '@/types';
+import Link from 'next/link';
 
 const CATEGORY_LABELS: Record<string, string> = {
   hair: 'Hair',
@@ -210,12 +211,12 @@ export function ServicesGrid() {
 
             {/* Modal footer - Book button */}
             <div className="sticky bottom-0 bg-[#0a0a0a] border-t border-[#B8860B]/20 px-8 py-5">
-              <button
-                onClick={scrollToBooking}
-                className="w-full py-3 bg-[#B8860B] text-black text-[11px] uppercase tracking-[0.4em] font-sans hover:bg-[#d4a017] transition-colors duration-300"
-              >
-                Book an Appointment
-              </button>
+              import Link from 'next/link';
+
+<Link href="/booking" className="w-full block py-3 bg-[#B8860B] text-black text-[11px] uppercase tracking-[0.4em] font-sans hover:bg-[#d4a017] transition-colors duration-300 text-center">
+  Book an Appointment
+</Link>
+              
             </div>
           </div>
         </div>
