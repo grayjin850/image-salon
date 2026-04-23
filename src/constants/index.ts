@@ -16,7 +16,7 @@ export const SERVICE_CATEGORIES = [
 
 export const BUSINESS_HOURS = {
   open: '9:00 AM',
-  close: '7:00 PM',
+  close: '6:00 PM',
   days: 'Monday - Saturday',
 };
 
