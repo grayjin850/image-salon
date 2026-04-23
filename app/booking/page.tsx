@@ -241,7 +241,7 @@ export default function BookingPage() {
 
         <div className="text-center mt-8">
           <p className="text-white/30 text-[10px] uppercase tracking-[0.3em] font-sans">
-            Monday – Saturday · 9:00 AM – 7:00 PM · +691 320 3289
+            Monday – Saturday · 9:00 AM – 6:00 PM · +691 320 3289
           </p>
         </div>
 
