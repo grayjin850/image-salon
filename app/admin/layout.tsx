@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 import React from "react";
 
-=======
->>>>>>> 314f9367e2fc5a9386fdd547197cf2cce2d7c34b
 export default function AdminLayout({
   children,
 }: {
