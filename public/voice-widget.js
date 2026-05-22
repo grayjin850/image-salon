@@ -305,6 +305,7 @@
   let messages = [];
   let isListening = false;
   let isSpeaking = false;
+  let conversationActive = false;
   let pendingGreeting = null;
   let recognition = null;
   let currentAudio = null;
@@ -389,6 +390,10 @@
         setStatus('Ready');
         setHint('Tap to speak');
         URL.revokeObjectURL(url);
+        // Auto-restart mic if user was in conversation and overlay is still open
+        if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
+          setTimeout(startListening, 400);
+        }
       };
 
       audio.onended = cleanup;
@@ -490,8 +495,9 @@
   async function startListening() {
     if (isSpeaking) return;
 
-    // Toggle OFF — recognition is currently running
+    // Toggle OFF — user explicitly stopping
     if (isListening) {
+      conversationActive = false;
       if (recognition) try { recognition.stop(); } catch (e) {}
       return;
     }
@@ -507,9 +513,10 @@
     // Always create a fresh instance — reusing an ended object throws InvalidStateError silently
     recognition = initRecognition();
     if (!recognition) return;
+    conversationActive = true;
     try {
       recognition.start();
-    } catch (err) {}
+    } catch (err) { conversationActive = false; }
   }
 
   // ---------- STEP 9: Greeting ----------
