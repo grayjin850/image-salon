@@ -397,8 +397,10 @@
 
       try {
         await audio.play();
+        return true;
       } catch (err) {
         cleanup();
+        return false;
       }
     } catch (err) {
       isSpeaking = false;
@@ -406,6 +408,7 @@
       animateBars(false);
       setStatus('Ready');
       setHint('Tap to speak');
+      return false;
     }
   }
 
@@ -539,13 +542,13 @@
       if (!res.ok || !data.text) throw new Error('no response');
       addMsg('assistant', data.text);
       pendingGreeting = data.text;
-      await speakText(data.text);
-      pendingGreeting = null;
+      const played = await speakText(data.text);
+      if (played) pendingGreeting = null;
     } catch (err) {
       addMsg('assistant', fallback);
       pendingGreeting = fallback;
-      await speakText(fallback);
-      pendingGreeting = null;
+      const played = await speakText(fallback);
+      if (played) pendingGreeting = null;
     }
     setStatus('Ready');
     setHint('Tap to speak');
@@ -591,6 +594,16 @@
     micBtn.addEventListener('click', startListening);
     closeBtn.addEventListener('click', closeOverlay);
     floatBtn.addEventListener('click', openOverlay);
+
+    // Play greeting on first user gesture (browser autoplay unlock)
+    document.addEventListener('click', async function onFirstClick() {
+      document.removeEventListener('click', onFirstClick);
+      if (pendingGreeting) {
+        const g = pendingGreeting;
+        pendingGreeting = null;
+        await speakText(g);
+      }
+    }, { once: true });
 
     triggerGreeting();
   }
