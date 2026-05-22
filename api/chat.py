@@ -126,7 +126,7 @@ class handler(BaseHTTPRequestHandler):
             system_prompt = SYSTEM_PROMPT_TEMPLATE.replace('{rag_block}', rag_block)
 
             payload = {
-                "model": "google/gemma-3-27b-it:free",
+                "model": "meta-llama/llama-3.1-8b-instruct:free",
                 "messages": [{"role": "system", "content": system_prompt}] + messages,
                 "tools": TOOLS,
                 "tool_choice": "auto",
