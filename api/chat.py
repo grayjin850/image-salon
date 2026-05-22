@@ -125,8 +125,16 @@ class handler(BaseHTTPRequestHandler):
             rag_block = _build_rag_block(supabase)
             system_prompt = SYSTEM_PROMPT_TEMPLATE.replace('{rag_block}', rag_block)
 
+            FREE_MODELS = [
+                "meta-llama/llama-3.3-70b-instruct:free",
+                "deepseek/deepseek-chat-v3-0324:free",
+                "google/gemma-3-27b-it:free",
+                "mistralai/mistral-small-3.1-24b-instruct:free",
+                "qwen/qwen3-8b:free",
+            ]
+
             payload = {
-                "model": "meta-llama/llama-3.3-70b-instruct:free",
+                "model": FREE_MODELS[0],
                 "messages": [{"role": "system", "content": system_prompt}] + messages,
                 "tools": TOOLS,
                 "tool_choice": "auto",
@@ -139,21 +147,23 @@ class handler(BaseHTTPRequestHandler):
                 "Content-Type": "application/json",
             }
 
-            print(f"[chat] sending to OpenRouter: model={payload['model']} messages={len(payload['messages'])}")
-            print(f"[chat] payload keys: {list(payload.keys())}")
-
             with httpx.Client(timeout=30.0) as client:
-                for attempt in range(3):
+                response = None
+                for model_id in FREE_MODELS:
+                    payload["model"] = model_id
+                    print(f"[chat] trying model: {model_id}")
                     response = client.post(
                         "https://openrouter.ai/api/v1/chat/completions",
                         headers=headers,
                         json=payload,
                     )
-                    if response.status_code != 429:
+                    if response.status_code not in (429, 404):
+                        print(f"[chat] success with model: {model_id} status={response.status_code}")
                         break
-                    if attempt < 2:
-                        time.sleep(2 ** attempt)  # 1s, 2s
-                if response.status_code == 429:
+                    print(f"[chat] model {model_id} returned {response.status_code}, trying next")
+                    time.sleep(1)
+
+                if response.status_code in (429, 404):
                     self._send_json(200, {"text": "I'm a little busy right now — please try again in a moment!"})
                     return
                 response.raise_for_status()
