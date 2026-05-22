@@ -487,13 +487,8 @@
     rec.onend = () => {
       isListening = false;
       if (micBtn) micBtn.classList.remove('aria-listening');
-      // Restart only for no-speech timeout — NOT while processing or Aria speaking
-      if (micOn && !isSpeaking && !processingUtterance) {
-        setTimeout(() => {
-          try { if (recognition) recognition.start(); } catch (e) {}
-        }, 300);
-        return;
-      }
+      // No auto-restart here — speakText cleanup restarts after Aria finishes
+      // No-speech timeout silently ends here; user taps mic to retry
       if (!isSpeaking && !processingUtterance) {
         animateBars(false);
         setStatus('Ready');
