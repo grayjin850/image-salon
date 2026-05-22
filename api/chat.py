@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import traceback
 from http.server import BaseHTTPRequestHandler
 import httpx
@@ -142,13 +143,18 @@ class handler(BaseHTTPRequestHandler):
             print(f"[chat] payload keys: {list(payload.keys())}")
 
             with httpx.Client(timeout=30.0) as client:
-                response = client.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers=headers,
-                    json=payload,
-                )
+                for attempt in range(3):
+                    response = client.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers=headers,
+                        json=payload,
+                    )
+                    if response.status_code != 429:
+                        break
+                    if attempt < 2:
+                        time.sleep(2 ** attempt)  # 1s, 2s
                 if response.status_code == 429:
-                    self._send_json(200, {"text": "I'm just a moment — I'm receiving a lot of requests right now. Please try again in a few seconds!"})
+                    self._send_json(200, {"text": "I'm a little busy right now — please try again in a moment!"})
                     return
                 response.raise_for_status()
                 data = response.json()
