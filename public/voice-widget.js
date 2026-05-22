@@ -306,6 +306,7 @@
   let isListening = false;
   let isSpeaking = false;
   let conversationActive = false;
+  let processingUtterance = false;
   let pendingGreeting = null;
   let recognition = null;
   let currentAudio = null;
@@ -385,6 +386,7 @@
 
       const cleanup = () => {
         isSpeaking = false;
+        processingUtterance = false;
         if (micBtn) micBtn.classList.remove('aria-speaking');
         animateBars(false);
         setStatus('Ready');
@@ -461,6 +463,7 @@
     };
 
     rec.onresult = (event) => {
+      processingUtterance = true;
       const text = event.results[0][0].transcript;
       addMsg('user', text);
       animateBars(false);
@@ -479,12 +482,21 @@
     rec.onend = () => {
       isListening = false;
       if (micBtn) micBtn.classList.remove('aria-listening');
-      // No auto-restart here — speakText cleanup restarts after Aria finishes
-      // No-speech timeout silently ends here; user taps mic to retry
       if (!isSpeaking) {
         animateBars(false);
         setStatus('Ready');
         setHint('Tap to speak');
+      }
+      // If user is in an active conversation and no speech was captured (no-speech timeout),
+      // restart listening so they don't have to tap again after each silence window.
+      // processingUtterance=true means speech WAS captured — speakText cleanup handles restart.
+      if (conversationActive && !isSpeaking && !processingUtterance) {
+        setTimeout(() => {
+          if (conversationActive && !isSpeaking && !isListening) {
+            recognition = initRecognition();
+            if (recognition) try { recognition.start(); } catch (e) {}
+          }
+        }, 600);
       }
     };
 
@@ -498,6 +510,7 @@
     // Toggle OFF — user explicitly stopping
     if (isListening) {
       conversationActive = false;
+      processingUtterance = false;
       if (recognition) try { recognition.stop(); } catch (e) {}
       return;
     }
