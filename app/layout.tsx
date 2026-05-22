@@ -45,6 +45,7 @@ export default function RootLayout({
          <Nav />
         <main>{children}</main>
         <Footer />
+        <script src="/voice-widget.js" defer></script>
       </body>
     </html>
   );
