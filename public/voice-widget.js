@@ -305,6 +305,8 @@
   let messages = [];
   let isListening = false;
   let isSpeaking = false;
+  let wantsListening = false;
+  let pendingGreeting = null;
   let recognition = null;
   let currentAudio = null;
   let animationFrame = null;
@@ -409,6 +411,8 @@
 
   // ---------- STEP 6: LLM ----------
   async function sendToLLM() {
+    wantsListening = false;
+    if (recognition) try { recognition.stop(); } catch (e) {}
     setStatus('Thinking…');
     setHint('Aria is responding…');
     try {
@@ -470,6 +474,10 @@
     rec.onend = () => {
       isListening = false;
       if (micBtn) micBtn.classList.remove('aria-listening');
+      if (wantsListening && !isSpeaking) {
+        try { recognition.start(); } catch (e) {}
+        return;
+      }
       if (!isSpeaking) {
         animateBars(false);
         setStatus('Ready');
@@ -480,18 +488,39 @@
     return rec;
   }
 
-  // ---------- STEP 8: Start listening ----------
-  function startListening() {
-    if (isSpeaking || isListening) return;
+  // ---------- STEP 8: Start/stop listening ----------
+  async function startListening() {
+    if (isSpeaking) return;
+
+    // Toggle OFF
+    if (wantsListening) {
+      wantsListening = false;
+      if (recognition) try { recognition.stop(); } catch (e) {}
+      animateBars(false);
+      setStatus('Ready');
+      setHint('Tap to speak');
+      return;
+    }
+
+    // First tap: speak pending greeting (user gesture unlocks browser audio)
+    if (pendingGreeting) {
+      const g = pendingGreeting;
+      pendingGreeting = null;
+      await speakText(g);
+      return;
+    }
+
+    // Toggle ON
+    wantsListening = true;
     if (!recognition) recognition = initRecognition();
-    if (!recognition) return;
+    if (!recognition) { wantsListening = false; return; }
     try {
       recognition.start();
     } catch (err) {
       try {
         recognition = initRecognition();
         if (recognition) recognition.start();
-      } catch (e2) {}
+      } catch (e2) { wantsListening = false; }
     }
   }
 
@@ -509,11 +538,17 @@
       const data = await res.json();
       if (!res.ok || !data.text) throw new Error('no response');
       addMsg('assistant', data.text);
+      pendingGreeting = data.text;
       await speakText(data.text);
+      pendingGreeting = null;
     } catch (err) {
       addMsg('assistant', fallback);
+      pendingGreeting = fallback;
       await speakText(fallback);
+      pendingGreeting = null;
     }
+    setStatus('Ready');
+    setHint('Tap to speak');
   }
 
   // ---------- STEP 10: Open/close ----------
