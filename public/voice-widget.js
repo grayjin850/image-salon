@@ -147,6 +147,15 @@
       align-self: flex-end;
       border-bottom-right-radius: 4px;
     }
+    .aria-msg-interim {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.45);
+      font-style: italic;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+      animation: none;
+    }
 
     .aria-visualizer {
       height: 48px;
@@ -309,6 +318,7 @@
   let processingUtterance = false;
   let intentionalStop = false;
   let restartTimer = null;
+  let interimMsgEl = null;
   let pendingGreeting = null;
   let recognition = null;
   let currentAudio = null;
@@ -334,6 +344,24 @@
     transcript.scrollTop = transcript.scrollHeight;
     if (role === 'user' || role === 'assistant') {
       messages.push({ role, content: text });
+    }
+  }
+
+  function showInterim(text) {
+    if (!transcript) return;
+    if (!interimMsgEl) {
+      interimMsgEl = document.createElement('div');
+      interimMsgEl.className = 'aria-msg aria-msg-interim';
+      transcript.appendChild(interimMsgEl);
+    }
+    interimMsgEl.textContent = text;
+    transcript.scrollTop = transcript.scrollHeight;
+  }
+
+  function clearInterim() {
+    if (interimMsgEl) {
+      interimMsgEl.remove();
+      interimMsgEl = null;
     }
   }
 
@@ -468,16 +496,23 @@
     };
 
     rec.onresult = (event) => {
-      const lastResult = event.results[event.results.length - 1];
-      if (!lastResult.isFinal) return;
-      const text = lastResult[0].transcript.trim();
-      if (!text) return;
-      processingUtterance = true;
-      intentionalStop = true;
-      try { rec.stop(); } catch (e) {}
-      addMsg('user', text);
-      animateBars(false);
-      sendToLLM();
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const r = event.results[i];
+        if (r.isFinal) final += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      if (interim) showInterim(interim);
+      if (final.trim()) {
+        clearInterim();
+        processingUtterance = true;
+        intentionalStop = true;
+        try { rec.stop(); } catch (e) {}
+        addMsg('user', final.trim());
+        animateBars(false);
+        sendToLLM();
+      }
     };
 
     rec.onerror = (event) => {
@@ -518,6 +553,7 @@
       // no flicker during the 300ms restart gap.
       restartTimer = setTimeout(() => {
         restartTimer = null;
+        clearInterim();
         if (conversationActive && !isSpeaking && !isListening) {
           recognition = initRecognition();
           if (recognition) {
@@ -548,6 +584,7 @@
       conversationActive = false;
       processingUtterance = false;
       intentionalStop = true;
+      clearInterim();
       if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
       if (recognition) try { recognition.stop(); } catch (e) {}
       animateBars(false);
