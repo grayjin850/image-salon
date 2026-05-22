@@ -386,7 +386,10 @@
       const audio = new Audio(url);
       currentAudio = audio;
 
+      let cleanupDone = false;
       const cleanup = () => {
+        if (cleanupDone) return;
+        cleanupDone = true;
         isSpeaking = false;
         processingUtterance = false;
         intentionalStop = false;
@@ -395,7 +398,6 @@
         setStatus('Ready');
         setHint('Tap to speak');
         URL.revokeObjectURL(url);
-        // Auto-restart mic if user was in conversation and overlay is still open
         if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
           setTimeout(startListening, 400);
         }
@@ -453,7 +455,7 @@
     }
     const rec = new SpeechRecognition();
     rec.lang = 'en-US';
-    rec.interimResults = false;
+    rec.interimResults = true;
     rec.maxAlternatives = 1;
     rec.continuous = true;
 
@@ -535,12 +537,14 @@
   }
 
   // ---------- STEP 8: Start/stop listening ----------
-  async function startListening() {
+  // userGesture=true means the user tapped the mic button explicitly.
+  // Auto-restarts (from speakText cleanup) pass userGesture=false so they
+  // never accidentally trigger the toggle-off path.
+  async function startListening(userGesture) {
     if (isSpeaking) return;
 
-    // Toggle OFF — user explicitly stopping (check conversationActive too, in case
-    // we're in the 300ms gap between session kills and restart)
-    if (isListening || conversationActive) {
+    // Toggle OFF — only when the user taps while a conversation is running
+    if (userGesture && (isListening || conversationActive)) {
       conversationActive = false;
       processingUtterance = false;
       intentionalStop = true;
@@ -633,7 +637,7 @@
     vizBars = document.querySelectorAll('.aria-bar');
 
     // STEP 11: Event listeners
-    micBtn.addEventListener('click', startListening);
+    micBtn.addEventListener('click', () => startListening(true));
     closeBtn.addEventListener('click', closeOverlay);
     floatBtn.addEventListener('click', openOverlay);
 
