@@ -133,8 +133,8 @@ class handler(BaseHTTPRequestHandler):
             }
             headers = {
                 "Authorization": f"Bearer {openrouter_key}",
-                "HTTP-Referer": site_url,
-                "X-Title": "Aria Salon Agent",
+                "HTTP-Referer": "https://image-salon-three.vercel.app",
+                "X-Title": "Image Salon Aria",
                 "Content-Type": "application/json",
             }
 
