@@ -277,12 +277,26 @@
           <div class="aria-transcript" id="aria-transcript"></div>
           <div class="aria-visualizer" id="aria-visualizer">${bars}</div>
           <div class="aria-controls">
-            <button class="aria-mic-btn" id="aria-mic-btn" title="Tap to speak">🎤</button>
+            <button class="aria-mic-btn" id="aria-mic-btn" title="Tap to speak">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="22"/>
+                <line x1="8" y1="22" x2="16" y2="22"/>
+              </svg>
+            </button>
             <div class="aria-hint" id="aria-hint-text">Tap to speak</div>
           </div>
         </div>
       </div>
-      <button id="aria-float-btn" title="Open Aria">🎤</button>
+      <button id="aria-float-btn" title="Open Aria">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="8" y1="22" x2="16" y2="22"/>
+        </svg>
+      </button>
     `;
     document.body.insertAdjacentHTML('beforeend', html);
   }

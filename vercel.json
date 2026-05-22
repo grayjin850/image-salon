@@ -1,0 +1,12 @@
+{
+  "functions": {
+    "api/chat.py": {
+      "runtime": "python3.12",
+      "maxDuration": 30
+    },
+    "api/tts.py": {
+      "runtime": "python3.12",
+      "maxDuration": 30
+    }
+  }
+}
