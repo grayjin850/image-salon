@@ -126,11 +126,11 @@ class handler(BaseHTTPRequestHandler):
             system_prompt = SYSTEM_PROMPT_TEMPLATE.replace('{rag_block}', rag_block)
 
             FREE_MODELS = [
+                "nousresearch/hermes-3-llama-3.1-405b:free",
+                "openai/gpt-oss-20b:free",
+                "deepseek/deepseek-v4-flash:free",
                 "meta-llama/llama-3.3-70b-instruct:free",
-                "deepseek/deepseek-chat-v3-0324:free",
-                "google/gemma-3-27b-it:free",
-                "mistralai/mistral-small-3.1-24b-instruct:free",
-                "qwen/qwen3-8b:free",
+                "meta-llama/llama-3.2-3b-instruct:free",
             ]
 
             payload = {
