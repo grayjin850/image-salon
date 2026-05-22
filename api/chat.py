@@ -1,5 +1,6 @@
 import json
 import os
+import traceback
 from http.server import BaseHTTPRequestHandler
 import httpx
 from supabase import create_client
@@ -108,6 +109,13 @@ class handler(BaseHTTPRequestHandler):
             supabase_key = os.environ.get('SUPABASE_SERVICE_KEY') or os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
             site_url = os.environ.get('SITE_URL', '')
 
+            print(f"[chat] OPENROUTER_API_KEY set: {bool(openrouter_key)}")
+            print(f"[chat] SUPABASE_URL set: {bool(supabase_url)}")
+            print(f"[chat] SUPABASE_KEY set: {bool(supabase_key)}")
+            if not openrouter_key:
+                self._send_json(500, {"error": "OPENROUTER_API_KEY is not set in environment"})
+                return
+
             content_length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(content_length))
             messages = body.get('messages', [])
@@ -188,4 +196,6 @@ class handler(BaseHTTPRequestHandler):
             self._send_json(200, {"text": choice.get('content', '')})
 
         except Exception as e:
-            self._send_json(500, {"error": str(e)})
+            tb = traceback.format_exc()
+            print(f"[chat] ERROR: {e}\n{tb}")
+            self._send_json(500, {"error": str(e), "traceback": tb})
