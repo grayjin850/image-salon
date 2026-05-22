@@ -149,6 +149,7 @@ class handler(BaseHTTPRequestHandler):
 
             with httpx.Client(timeout=30.0) as client:
                 response = None
+                failed_models = []
                 for model_id in FREE_MODELS:
                     payload["model"] = model_id
                     print(f"[chat] trying model: {model_id}")
@@ -160,11 +161,13 @@ class handler(BaseHTTPRequestHandler):
                     if response.status_code not in (429, 404):
                         print(f"[chat] success with model: {model_id} status={response.status_code}")
                         break
-                    print(f"[chat] model {model_id} returned {response.status_code}, trying next")
+                    err_body = response.text[:200]
+                    failed_models.append(f"{model_id}={response.status_code}:{err_body}")
+                    print(f"[chat] model {model_id} returned {response.status_code}: {err_body}")
                     time.sleep(1)
 
                 if response.status_code in (429, 404):
-                    self._send_json(200, {"text": "I'm a little busy right now — please try again in a moment!"})
+                    self._send_json(200, {"text": "I'm a little busy right now — please try again in a moment!", "debug": failed_models})
                     return
                 response.raise_for_status()
                 data = response.json()
