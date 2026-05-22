@@ -452,7 +452,7 @@
     rec.lang = 'en-US';
     rec.interimResults = false;
     rec.maxAlternatives = 1;
-    rec.continuous = false;
+    rec.continuous = true;
 
     rec.onstart = () => {
       isListening = true;
@@ -463,8 +463,12 @@
     };
 
     rec.onresult = (event) => {
+      const lastResult = event.results[event.results.length - 1];
+      if (!lastResult.isFinal) return;
+      const text = lastResult[0].transcript.trim();
+      if (!text) return;
       processingUtterance = true;
-      const text = event.results[0][0].transcript;
+      try { rec.stop(); } catch (e) {}
       addMsg('user', text);
       animateBars(false);
       sendToLLM();
@@ -486,17 +490,6 @@
         animateBars(false);
         setStatus('Ready');
         setHint('Tap to speak');
-      }
-      // If user is in an active conversation and no speech was captured (no-speech timeout),
-      // restart listening so they don't have to tap again after each silence window.
-      // processingUtterance=true means speech WAS captured — speakText cleanup handles restart.
-      if (conversationActive && !isSpeaking && !processingUtterance) {
-        setTimeout(() => {
-          if (conversationActive && !isSpeaking && !isListening) {
-            recognition = initRecognition();
-            if (recognition) try { recognition.start(); } catch (e) {}
-          }
-        }, 600);
       }
     };
 
