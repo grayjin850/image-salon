@@ -1,11 +1,11 @@
 {
   "functions": {
     "api/chat.py": {
-      "runtime": "@vercel/python",
+      "runtime": "python3.12",
       "maxDuration": 30
     },
     "api/tts.py": {
-      "runtime": "@vercel/python",
+      "runtime": "python3.12",
       "maxDuration": 30
     }
   }
