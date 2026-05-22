@@ -418,6 +418,7 @@
         body: JSON.stringify({ messages }),
       });
       const data = await res.json();
+      if (!res.ok || !data.text) throw new Error(data.error || 'no response');
       addMsg('assistant', data.text);
       if (data.booked) setStatus('Booked ✓');
       await speakText(data.text);
@@ -498,6 +499,7 @@
   async function triggerGreeting() {
     if (messages.length !== 0) return;
     setStatus('Connecting…');
+    const fallback = "Hello! I'm Aria, your salon concierge. How can I help you today?";
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -505,12 +507,12 @@
         body: JSON.stringify({ messages: [] }),
       });
       const data = await res.json();
+      if (!res.ok || !data.text) throw new Error('no response');
       addMsg('assistant', data.text);
       await speakText(data.text);
     } catch (err) {
-      addMsg('assistant', "Hello! I'm Aria, your salon concierge. How can I help you today?");
-      setStatus('Ready');
-      setHint('Tap to speak');
+      addMsg('assistant', fallback);
+      await speakText(fallback);
     }
   }
 
