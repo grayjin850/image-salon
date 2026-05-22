@@ -307,6 +307,8 @@
   let isSpeaking = false;
   let conversationActive = false;
   let processingUtterance = false;
+  let intentionalStop = false;
+  let restartTimer = null;
   let pendingGreeting = null;
   let recognition = null;
   let currentAudio = null;
@@ -387,6 +389,7 @@
       const cleanup = () => {
         isSpeaking = false;
         processingUtterance = false;
+        intentionalStop = false;
         if (micBtn) micBtn.classList.remove('aria-speaking');
         animateBars(false);
         setStatus('Ready');
@@ -468,6 +471,7 @@
       const text = lastResult[0].transcript.trim();
       if (!text) return;
       processingUtterance = true;
+      intentionalStop = true;
       try { rec.stop(); } catch (e) {}
       addMsg('user', text);
       animateBars(false);
@@ -475,22 +479,56 @@
     };
 
     rec.onerror = (event) => {
+      const errorType = event && event.error ? event.error : 'unknown';
+      console.log('[Aria] speech error:', errorType);
       isListening = false;
       if (micBtn) micBtn.classList.remove('aria-listening');
-      if (event && event.error === 'no-speech') return;
-      animateBars(false);
-      setStatus('Ready');
-      setHint('Tap to speak');
+
+      if (errorType === 'not-allowed' || errorType === 'audio-capture') {
+        // Fatal: mic blocked — stop trying, show message
+        conversationActive = false;
+        intentionalStop = true;
+        animateBars(false);
+        setStatus('Mic blocked');
+        setHint(errorType === 'not-allowed' ? 'Allow mic in settings' : 'Check microphone');
+        return;
+      }
+      // no-speech / network / aborted — let onend handle restart
     };
 
     rec.onend = () => {
       isListening = false;
-      if (micBtn) micBtn.classList.remove('aria-listening');
-      if (!isSpeaking) {
-        animateBars(false);
-        setStatus('Ready');
-        setHint('Tap to speak');
+
+      if (intentionalStop || !conversationActive || isSpeaking) {
+        // Expected stop (user tapped off, speech captured, or speaking) — update UI
+        if (micBtn) micBtn.classList.remove('aria-listening');
+        intentionalStop = false;
+        if (!isSpeaking) {
+          animateBars(false);
+          setStatus('Ready');
+          setHint('Tap to speak');
+        }
+        return;
       }
+
+      // Browser killed the session unexpectedly (iOS Safari / Android no-speech timeout).
+      // Restart silently — keep mic lit and status showing "Listening…" so user sees
+      // no flicker during the 300ms restart gap.
+      restartTimer = setTimeout(() => {
+        restartTimer = null;
+        if (conversationActive && !isSpeaking && !isListening) {
+          recognition = initRecognition();
+          if (recognition) {
+            intentionalStop = false;
+            try { recognition.start(); } catch (e) {
+              if (micBtn) micBtn.classList.remove('aria-listening');
+              animateBars(false);
+              setStatus('Ready');
+              setHint('Tap to speak');
+            }
+          }
+        }
+      }, 300);
     };
 
     return rec;
@@ -500,11 +538,17 @@
   async function startListening() {
     if (isSpeaking) return;
 
-    // Toggle OFF — user explicitly stopping
-    if (isListening) {
+    // Toggle OFF — user explicitly stopping (check conversationActive too, in case
+    // we're in the 300ms gap between session kills and restart)
+    if (isListening || conversationActive) {
       conversationActive = false;
       processingUtterance = false;
+      intentionalStop = true;
+      if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
       if (recognition) try { recognition.stop(); } catch (e) {}
+      animateBars(false);
+      setStatus('Ready');
+      setHint('Tap to speak');
       return;
     }
 
