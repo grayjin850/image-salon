@@ -427,9 +427,9 @@
       if (data.booked) setStatus('Booked ✓');
       await speakText(data.text);
     } catch (err) {
-      addMsg('assistant', "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.");
-      setStatus('Error');
-      setHint('Tap to speak');
+      const errMsg = "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
+      addMsg('assistant', errMsg);
+      await speakText(errMsg);
     }
   }
 
