@@ -305,8 +305,6 @@
   let messages = [];
   let isListening = false;
   let isSpeaking = false;
-  let micOn = false;            // user explicitly turned mic on
-  let processingUtterance = false; // user spoke, waiting for Aria to respond
   let pendingGreeting = null;
   let recognition = null;
   let currentAudio = null;
@@ -386,19 +384,11 @@
 
       const cleanup = () => {
         isSpeaking = false;
-        processingUtterance = false;
         if (micBtn) micBtn.classList.remove('aria-speaking');
         animateBars(false);
         setStatus('Ready');
         setHint('Tap to speak');
         URL.revokeObjectURL(url);
-        // Restart mic after Aria finishes speaking (400ms avoids audio feedback)
-        if (micOn) {
-          setTimeout(() => {
-            if (!recognition) recognition = initRecognition();
-            try { if (recognition) recognition.start(); } catch (e) {}
-          }, 400);
-        }
       };
 
       audio.onended = cleanup;
@@ -423,8 +413,6 @@
 
   // ---------- STEP 6: LLM ----------
   async function sendToLLM() {
-    // Stop recognition while processing — micOn stays true so cleanup restarts it
-    if (recognition) try { recognition.stop(); } catch (e) {}
     setStatus('Thinking…');
     setHint('Aria is responding…');
     try {
@@ -471,7 +459,6 @@
       const text = event.results[0][0].transcript;
       addMsg('user', text);
       animateBars(false);
-      processingUtterance = true;
       sendToLLM();
     };
 
@@ -489,7 +476,7 @@
       if (micBtn) micBtn.classList.remove('aria-listening');
       // No auto-restart here — speakText cleanup restarts after Aria finishes
       // No-speech timeout silently ends here; user taps mic to retry
-      if (!isSpeaking && !processingUtterance) {
+      if (!isSpeaking) {
         animateBars(false);
         setStatus('Ready');
         setHint('Tap to speak');
@@ -503,18 +490,13 @@
   async function startListening() {
     if (isSpeaking) return;
 
-    // Toggle OFF
-    if (micOn) {
-      micOn = false;
-      processingUtterance = false;
+    // Toggle OFF — recognition is currently running
+    if (isListening) {
       if (recognition) try { recognition.stop(); } catch (e) {}
-      animateBars(false);
-      setStatus('Ready');
-      setHint('Tap to speak');
       return;
     }
 
-    // First tap: speak pending greeting, then let user tap again to start mic
+    // First tap unlocks audio and speaks pending greeting
     if (pendingGreeting) {
       const g = pendingGreeting;
       pendingGreeting = null;
@@ -522,13 +504,15 @@
       return;
     }
 
-    // Toggle ON
-    micOn = true;
+    // Start a new recognition session
     if (!recognition) recognition = initRecognition();
-    if (!recognition) { micOn = false; return; }
-    setTimeout(() => {
-      try { recognition.start(); } catch (e) { micOn = false; }
-    }, 100);
+    if (!recognition) return;
+    try {
+      recognition.start();
+    } catch (err) {
+      recognition = initRecognition();
+      if (recognition) try { recognition.start(); } catch (e) {}
+    }
   }
 
   // ---------- STEP 9: Greeting ----------
