@@ -125,7 +125,7 @@ class handler(BaseHTTPRequestHandler):
             system_prompt = SYSTEM_PROMPT_TEMPLATE.replace('{rag_block}', rag_block)
 
             payload = {
-                "model": "meta-llama/llama-3.3-70b-instruct:free",
+                "model": "google/gemma-3-27b-it:free",
                 "messages": [{"role": "system", "content": system_prompt}] + messages,
                 "tools": TOOLS,
                 "tool_choice": "auto",
@@ -144,6 +144,9 @@ class handler(BaseHTTPRequestHandler):
                     headers=headers,
                     json=payload,
                 )
+                if response.status_code == 429:
+                    self._send_json(200, {"text": "I'm just a moment — I'm receiving a lot of requests right now. Please try again in a few seconds!"})
+                    return
                 response.raise_for_status()
                 data = response.json()
 
