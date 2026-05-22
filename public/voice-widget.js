@@ -514,16 +514,11 @@
       return;
     }
 
-    // First tap: speak pending greeting, then auto-start mic
+    // First tap: speak pending greeting, then let user tap again to start mic
     if (pendingGreeting) {
       const g = pendingGreeting;
       pendingGreeting = null;
       await speakText(g);
-      micOn = true;
-      if (!recognition) recognition = initRecognition();
-      setTimeout(() => {
-        try { if (recognition) recognition.start(); } catch (e) { micOn = false; }
-      }, 400);
       return;
     }
 
@@ -604,19 +599,13 @@
     closeBtn.addEventListener('click', closeOverlay);
     floatBtn.addEventListener('click', openOverlay);
 
-    // Play greeting on first user gesture, then auto-start mic
+    // Play greeting on first user gesture (unlocks browser audio)
     document.addEventListener('click', async function onFirstClick() {
       document.removeEventListener('click', onFirstClick);
       if (pendingGreeting) {
         const g = pendingGreeting;
         pendingGreeting = null;
         await speakText(g);
-        // Auto-start mic after greeting finishes
-        micOn = true;
-        if (!recognition) recognition = initRecognition();
-        setTimeout(() => {
-          try { if (recognition) recognition.start(); } catch (e) { micOn = false; }
-        }, 400);
       }
     }, { once: true });
 
