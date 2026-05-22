@@ -504,15 +504,12 @@
       return;
     }
 
-    // Start a new recognition session
-    if (!recognition) recognition = initRecognition();
+    // Always create a fresh instance — reusing an ended object throws InvalidStateError silently
+    recognition = initRecognition();
     if (!recognition) return;
     try {
       recognition.start();
-    } catch (err) {
-      recognition = initRecognition();
-      if (recognition) try { recognition.start(); } catch (e) {}
-    }
+    } catch (err) {}
   }
 
   // ---------- STEP 9: Greeting ----------
