@@ -126,12 +126,13 @@ class handler(BaseHTTPRequestHandler):
             system_prompt = SYSTEM_PROMPT_TEMPLATE.replace('{rag_block}', rag_block)
 
             FREE_MODELS = [
-                "nousresearch/hermes-3-llama-3.1-405b:free",
                 "openai/gpt-oss-20b:free",
                 "deepseek/deepseek-v4-flash:free",
                 "meta-llama/llama-3.3-70b-instruct:free",
                 "meta-llama/llama-3.2-3b-instruct:free",
+                "google/gemma-4-31b-it:free",
             ]
+            SKIP_CODES = {402, 404, 429}
 
             payload = {
                 "model": FREE_MODELS[0],
@@ -158,7 +159,7 @@ class handler(BaseHTTPRequestHandler):
                         headers=headers,
                         json=payload,
                     )
-                    if response.status_code not in (429, 404):
+                    if response.status_code not in SKIP_CODES:
                         print(f"[chat] success with model: {model_id} status={response.status_code}")
                         break
                     err_body = response.text[:200]
@@ -166,7 +167,7 @@ class handler(BaseHTTPRequestHandler):
                     print(f"[chat] model {model_id} returned {response.status_code}: {err_body}")
                     time.sleep(1)
 
-                if response.status_code in (429, 404):
+                if response.status_code in SKIP_CODES:
                     self._send_json(200, {"text": "I'm a little busy right now — please try again in a moment!", "debug": failed_models})
                     return
                 response.raise_for_status()
