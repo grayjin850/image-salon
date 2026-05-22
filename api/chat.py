@@ -104,8 +104,8 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             openrouter_key = os.environ.get('OPENROUTER_API_KEY')
-            supabase_url = os.environ.get('SUPABASE_URL')
-            supabase_key = os.environ.get('SUPABASE_SERVICE_KEY')
+            supabase_url = os.environ.get('SUPABASE_URL') or os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
+            supabase_key = os.environ.get('SUPABASE_SERVICE_KEY') or os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
             site_url = os.environ.get('SITE_URL', '')
 
             content_length = int(self.headers.get('Content-Length', 0))
