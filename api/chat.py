@@ -1,7 +1,9 @@
 import json
 import os
+import re
 import time
 import traceback
+from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 import httpx
 from supabase import create_client
@@ -155,6 +157,84 @@ def _log_fail(provider, reason):
     print(f"[chat] [{ts}] provider={provider} reason={reason}")
 
 
+def _normalize_date(date_str):
+    """Convert natural-language date to YYYY-MM-DD. Returns None if unparseable."""
+    if not date_str:
+        return None
+    s = date_str.strip()
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', s):
+        return s
+    lower = s.lower()
+    if 'today' in lower:
+        return datetime.now().strftime('%Y-%m-%d')
+    if 'tomorrow' in lower:
+        return (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    day_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    for i, day in enumerate(day_names):
+        if day in lower:
+            today = datetime.now()
+            ahead = i - today.weekday()
+            if ahead <= 0:
+                ahead += 7
+            return (today + timedelta(days=ahead)).strftime('%Y-%m-%d')
+    for fmt in ('%B %d', '%b %d', '%m/%d', '%B %d %Y', '%b %d %Y', '%m/%d/%Y'):
+        try:
+            parsed = datetime.strptime(s, fmt)
+            if parsed.year == 1900:
+                parsed = parsed.replace(year=datetime.now().year)
+            return parsed.strftime('%Y-%m-%d')
+        except ValueError:
+            pass
+    return None
+
+
+def _normalize_time(time_str):
+    """Convert natural-language time to HH:MM:SS. Returns None if unparseable."""
+    if not time_str:
+        return None
+    s = time_str.strip()
+    if re.match(r'^\d{2}:\d{2}:\d{2}$', s):
+        return s
+    if re.match(r'^\d{1,2}:\d{2}$', s):
+        h, m = s.split(':')
+        return f"{int(h):02d}:{m}:00"
+    for fmt in ('%I %p', '%I:%M %p', '%H:%M', '%I%p', '%I:%M%p'):
+        try:
+            parsed = datetime.strptime(s.upper(), fmt)
+            return parsed.strftime('%H:%M:%S')
+        except ValueError:
+            pass
+    lower = s.lower()
+    if 'afternoon' in lower:
+        return '14:00:00'
+    if 'morning' in lower:
+        return '09:00:00'
+    if 'evening' in lower:
+        return '18:00:00'
+    if 'noon' in lower or 'midday' in lower:
+        return '12:00:00'
+    return None
+
+
+def _extract_leaked_tool_call(content):
+    """Parse <function=name>{...}</function> that llama models leak in content.
+    Returns (tool_calls_list, clean_text) or (None, original_content)."""
+    if not content:
+        return None, content
+    match = re.search(r'<function=(\w+)>([\s\S]*?)</function>', content)
+    if not match:
+        return None, content
+    func_name = match.group(1)
+    raw_args = match.group(2).strip()
+    try:
+        args_dict = json.loads(raw_args)
+        tool_calls = [{'function': {'name': func_name, 'arguments': json.dumps(args_dict)}}]
+        clean = (content[:match.start()] + content[match.end():]).strip()
+        return tool_calls, clean
+    except json.JSONDecodeError:
+        return None, content
+
+
 class handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
@@ -287,6 +367,12 @@ class handler(BaseHTTPRequestHandler):
                 })
                 return
 
+            # Some llama/free models leak function calls as text instead of structured tool_calls
+            if choice and not choice.get('tool_calls') and choice.get('content'):
+                leaked, clean = _extract_leaked_tool_call(choice.get('content', ''))
+                if leaked:
+                    choice = {'content': clean, 'tool_calls': leaked}
+
             tool_calls = choice.get('tool_calls')
 
             if tool_calls:
@@ -311,6 +397,29 @@ class handler(BaseHTTPRequestHandler):
                     self._send_json(200, {"text": confirm_text, "booked": False})
                     return
 
+                # Save natural-language values for user-facing messages
+                original_date = args.get('preferred_date', '')
+                original_time = args.get('preferred_time', '')
+
+                # Normalize to Supabase date/time formats
+                norm_date = _normalize_date(original_date)
+                norm_time = _normalize_time(original_time)
+                if not norm_date or not norm_time:
+                    self._send_json(200, {
+                        "text": "I need a specific date and time to complete the booking. "
+                                "Could you tell me the exact date and preferred time?"
+                    })
+                    return
+
+                # Look up service_id by name if not provided (LLM never knows the UUID)
+                service_id = args.get('service_id') or None
+                if not service_id and args.get('service_name'):
+                    svc_lookup = supabase.table('services').select('id').ilike(
+                        'name', f"%{args['service_name']}%"
+                    ).eq('is_active', True).limit(1).execute()
+                    if svc_lookup.data:
+                        service_id = svc_lookup.data[0]['id']
+
                 existing = supabase.table('bookings').select('id').eq(
                     'client_name', args['client_name']
                 ).eq('service_name', args['service_name']).execute()
@@ -327,25 +436,25 @@ class handler(BaseHTTPRequestHandler):
                 booking_row = {
                     "client_name": args['client_name'],
                     "client_phone": args['client_phone'],
-                    "service_id": args['service_id'],
+                    "service_id": service_id,
                     "service_name": args['service_name'],
-                    "preferred_date": args['preferred_date'],
-                    "preferred_time": args['preferred_time'],
+                    "preferred_date": norm_date,
+                    "preferred_time": norm_time,
                     "status": "pending",
                 }
                 if args.get('client_email'):
                     booking_row['client_email'] = args['client_email']
+                # Store address in notes if no explicit notes provided
                 if args.get('notes'):
                     booking_row['notes'] = args['notes']
+                elif args.get('address'):
+                    booking_row['notes'] = f"Address: {args['address']}"
 
                 supabase.table('bookings').insert(booking_row).execute()
 
-                time_str = args['preferred_time']
-                display_time = time_str[:5] if len(time_str) >= 5 else time_str
-
                 text = (
                     f"Perfect! I've booked your {args['service_name']} on "
-                    f"{args['preferred_date']} at {display_time}. "
+                    f"{original_date} at {original_time}. "
                     "We'll see you then! Is there anything else I can help you with?"
                 )
                 self._send_json(200, {"text": text, "booked": True})
