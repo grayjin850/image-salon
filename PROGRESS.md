@@ -194,3 +194,18 @@ When /api/tts fetch throws (network error, timeout), the outer catch block ran c
 - No build step needed — Python only, no DB touched
 
 ---
+
+## Bug Fixes — 2026-05-24
+
+### Tasks Completed
+- [x] Fix (book_appointment={...}) leaked function call format (claude-sonnet-4-6)
+- [x] Fix "rebond" autocorrected to "ribbon" by Web Speech API (claude-haiku-4-5)
+
+### Files Modified
+- `api/chat.py` — `_extract_leaked_tool_call`: added paren-format regex `\((\w+)=(?=\s*\{)`, field name normalization (`name`→`client_name`, `phone`→`client_phone`), paren suffix stripping
+- `public/voice-widget.js` — Added `SPEECH_CORRECTIONS` map + `correctTranscript()` function; applied to `rec.onresult` final transcript before `addMsg`
+
+### Verification
+- No build step — static JS + Python serverless changes only
+
+---

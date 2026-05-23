@@ -225,17 +225,20 @@ def _is_valid_uuid(s):
 
 
 def _extract_leaked_tool_call(content):
-    """Robust parser for <function=name>{...} that llama models leak.
-    Uses brace-counting so it works with or without a closing </function> tag.
+    """Robust parser for leaked function calls from llama models.
+    Handles: <function=name>{...}, Function=name>{...}, (name={...})
+    Uses brace-counting so it works with or without closing tags.
     Returns (tool_calls_list, clean_text) or (None, original_content)."""
     if not content:
         return None, content
 
-    open_match = re.search(r'<?[Ff]unction=(\w+)>', content)
+    # group(1) = angle-bracket format, group(2) = paren format
+    open_match = re.search(r'(?:<?[Ff]unction=(\w+)>|\((\w+)=(?=\s*\{))', content)
     if not open_match:
         return None, content
 
-    func_name = open_match.group(1)
+    is_paren_format = open_match.group(1) is None
+    func_name = open_match.group(1) or open_match.group(2)
     rest = content[open_match.end():]
 
     brace_start = rest.find('{')
@@ -258,9 +261,17 @@ def _extract_leaked_tool_call(content):
     raw_json = rest[brace_start:brace_end] if brace_end != -1 else rest[brace_start:]
     try:
         args_dict = json.loads(raw_json)
+        # Normalize alternate field names used by some llama output formats
+        if 'name' in args_dict and 'client_name' not in args_dict:
+            args_dict['client_name'] = args_dict.pop('name')
+        if 'phone' in args_dict and 'client_phone' not in args_dict:
+            args_dict['client_phone'] = args_dict.pop('phone')
         tool_calls = [{'function': {'name': func_name, 'arguments': json.dumps(args_dict)}}]
         suffix = rest[brace_end:] if brace_end != -1 else ''
-        suffix = re.sub(r'^\s*</function>\s*', '', suffix).strip()
+        if is_paren_format:
+            suffix = re.sub(r'^\s*\)', '', suffix).strip()
+        else:
+            suffix = re.sub(r'^\s*</function>\s*', '', suffix).strip()
         clean = (content[:open_match.start()] + (' ' + suffix if suffix else '')).strip()
         return tool_calls, clean
     except (json.JSONDecodeError, ValueError):

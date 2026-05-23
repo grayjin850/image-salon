@@ -567,6 +567,19 @@
   }
 
   // ---------- STEP 6: LLM ----------
+  // STT phonetic corrections — browser speech API mishears salon terms
+  const SPEECH_CORRECTIONS = {
+    'ribbon': 'rebond',
+    'ribbons': 'rebonds',
+  };
+  function correctTranscript(text) {
+    return text.replace(/\b(ribbon|ribbons)\b/gi, (m) => {
+      const key = m.toLowerCase();
+      const fix = SPEECH_CORRECTIONS[key];
+      return fix ? (m[0] === m[0].toUpperCase() ? fix.charAt(0).toUpperCase() + fix.slice(1) : fix) : m;
+    });
+  }
+
   const CONFIRM_WORDS_JS = ['yes', 'yep', 'yeah', 'yup', 'ok', 'okay', 'sure', 'definitely',
     'confirmed', 'go ahead', 'book it', "let's do it", 'please book', 'do it', 'sounds good', 'perfect'];
 
@@ -648,7 +661,7 @@
         processingUtterance = true;
         intentionalStop = true;
         try { rec.stop(); } catch (e) {}
-        addMsg('user', final.trim());
+        addMsg('user', correctTranscript(final.trim()));
         animateBars(false);
         sendToLLM();
       }
