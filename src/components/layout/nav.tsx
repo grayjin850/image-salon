@@ -103,7 +103,7 @@ export function Nav() {
 
       {/* Mobile drawer */}
       <div
-        className={`fixed inset-0 z-40 md:hidden transition-all duration-300 ${
+        className={`fixed inset-0 z-[10004] md:hidden transition-all duration-300 ${
           isOpen ? 'pointer-events-auto' : 'pointer-events-none'
         }`}
       >

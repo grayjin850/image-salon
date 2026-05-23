@@ -9,105 +9,116 @@
 
   // ---------- STEP 1: CSS ----------
   const css = `
-    :root {
-      --cream: #F5F0E8;
-      --warm: #1a1510;
-      --gold: #B8860B;
-      --gold-light: #D4A017;
-      --charcoal: #111111;
-      --muted: #888888;
-    }
+    /* ── Aria SaaS Widget — Cream & Sage theme ── */
 
     #aria-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.65);
+      background: rgba(28, 25, 23, 0.45);
       z-index: 10001;
       display: flex;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      animation: aria-fade-in 0.3s ease-out;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      animation: aria-fade-in 0.25s ease-out;
+      padding: 1rem;
     }
     #aria-overlay.aria-hidden { display: none; }
 
     #aria-widget {
       width: 100%;
-      max-width: 420px;
-      margin: 1rem;
-      background: var(--warm);
-      border: 1px solid rgba(184, 134, 11, 0.3);
-      border-radius: 16px;
+      max-width: 400px;
+      background: #FFFFFF;
+      border: 1px solid #E8E1D9;
+      border-radius: 24px;
       overflow: hidden;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      box-shadow: 0 32px 100px rgba(28, 25, 23, 0.2), 0 0 0 1px rgba(74,124,89,0.06);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Plus Jakarta Sans", Roboto, sans-serif;
     }
 
+    /* ── Header ── */
     .aria-header {
       display: flex;
       gap: 12px;
       align-items: center;
-      padding: 18px 20px;
-      background: linear-gradient(135deg, #1a1510 0%, #0f0c08 100%);
-      border-bottom: 1px solid rgba(184, 134, 11, 0.25);
+      padding: 18px 18px 18px 18px;
+      background: linear-gradient(135deg, #4A7C59 0%, #3A6246 100%);
       position: relative;
     }
 
+    .aria-avatar-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
     .aria-avatar {
-      width: 42px;
-      height: 42px;
+      width: 46px;
+      height: 46px;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+      background: rgba(255, 255, 255, 0.18);
+      border: 2px solid rgba(255, 255, 255, 0.3);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-      color: #1a1510;
-      flex-shrink: 0;
+      font-size: 20px;
+      color: white;
+    }
+    .aria-online-dot {
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #4ADE80;
+      border: 2px solid #3A6246;
     }
 
+    .aria-header-info { flex: 1; min-width: 0; }
     .aria-name {
-      font-size: 16px;
-      color: var(--cream);
-      letter-spacing: 0.05em;
+      font-size: 15px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
     }
     .aria-name em {
-      color: var(--gold);
+      display: block;
       font-style: normal;
-    }
-
-    .aria-status {
+      font-weight: 400;
       font-size: 11px;
-      color: var(--muted);
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.02em;
+      margin-top: 1px;
+    }
+    .aria-status {
+      font-size: 10.5px;
+      color: rgba(255, 255, 255, 0.6);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-top: 2px;
+      margin-top: 3px;
     }
 
     .aria-close-btn {
       position: absolute;
       top: 14px;
-      right: 16px;
-      width: 28px;
-      height: 28px;
+      right: 14px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       border: none;
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--muted);
+      background: rgba(255, 255, 255, 0.15);
+      color: rgba(255,255,255,0.8);
       cursor: pointer;
-      font-size: 18px;
-      line-height: 1;
+      font-size: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s, color 0.2s;
+      transition: background 0.2s;
     }
-    .aria-close-btn:hover {
-      background: rgba(184, 134, 11, 0.15);
-      color: var(--cream);
-    }
+    .aria-close-btn:hover { background: rgba(255,255,255,0.25); color: white; }
 
+    /* ── Transcript ── */
     .aria-transcript {
       height: 260px;
       overflow-y: auto;
@@ -117,183 +128,249 @@
       flex-direction: column;
       gap: 10px;
       scroll-behavior: smooth;
-      background: #0e0b07;
+      background: #FAF7F2;
     }
     .aria-transcript::-webkit-scrollbar { width: 4px; }
     .aria-transcript::-webkit-scrollbar-track { background: transparent; }
-    .aria-transcript::-webkit-scrollbar-thumb {
-      background: rgba(184, 134, 11, 0.4);
-      border-radius: 4px;
-    }
+    .aria-transcript::-webkit-scrollbar-thumb { background: #D4A853; border-radius: 4px; }
 
     .aria-msg {
       max-width: 82%;
       padding: 10px 14px;
-      border-radius: 12px;
+      border-radius: 16px;
       font-size: 13.5px;
-      line-height: 1.5;
+      line-height: 1.55;
       animation: aria-msg-in 0.25s ease-out;
       word-wrap: break-word;
       white-space: pre-wrap;
     }
     .aria-msg-assistant {
-      background: rgba(184, 134, 11, 0.12);
-      border: 1px solid rgba(184, 134, 11, 0.25);
-      color: var(--cream);
+      background: #FFFFFF;
+      border: 1px solid #E8E1D9;
+      color: #1C1917;
       align-self: flex-start;
       border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 4px rgba(28,25,23,0.06);
     }
     .aria-msg-user {
-      background: rgba(255, 255, 255, 0.06);
-      color: #ccc;
+      background: #4A7C59;
+      color: #FFFFFF;
       align-self: flex-end;
       border-bottom-right-radius: 4px;
     }
     .aria-msg-interim {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px dashed rgba(255, 255, 255, 0.15);
-      color: rgba(255, 255, 255, 0.45);
+      background: rgba(74,124,89,0.07);
+      border: 1px dashed rgba(74,124,89,0.25);
+      color: rgba(28,25,23,0.4);
       font-style: italic;
       align-self: flex-end;
       border-bottom-right-radius: 4px;
       animation: none;
     }
 
+    /* ── Visualizer ── */
     .aria-visualizer {
-      height: 48px;
+      height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 3px;
       padding: 0 20px;
-      background: #0a0805;
+      background: #FFFFFF;
+      border-top: 1px solid #F0EBE3;
+      border-bottom: 1px solid #F0EBE3;
     }
     .aria-bar {
       width: 3px;
-      height: 4px;
+      height: 3px;
       border-radius: 3px;
-      background: var(--gold);
-      opacity: 0.35;
+      background: #4A7C59;
+      opacity: 0.25;
       transition: height 0.08s ease-out;
     }
-    .aria-bar.aria-active { opacity: 0.85; }
+    .aria-bar.aria-active { opacity: 0.75; }
 
+    /* ── Controls ── */
     .aria-controls {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
-      padding: 16px 20px 20px;
-      background: #0a0805;
+      gap: 8px;
+      padding: 16px 20px 16px;
+      background: #FFFFFF;
     }
 
     .aria-mic-btn {
-      width: 60px;
-      height: 60px;
+      width: 62px;
+      height: 62px;
       border-radius: 50%;
-      border: 2px solid var(--gold);
-      background: transparent;
-      color: var(--gold);
+      border: none;
+      background: #4A7C59;
+      color: #FFFFFF;
       cursor: pointer;
       font-size: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: box-shadow 0.25s, background 0.25s, color 0.25s, transform 0.2s;
+      transition: box-shadow 0.25s, transform 0.2s, background 0.25s;
+      box-shadow: 0 4px 20px rgba(74,124,89,0.4);
     }
     .aria-mic-btn:hover {
-      box-shadow: 0 0 24px rgba(184, 134, 11, 0.45);
-      transform: scale(1.04);
+      box-shadow: 0 6px 28px rgba(74,124,89,0.55);
+      transform: scale(1.05);
     }
-    .aria-mic-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
+    .aria-mic-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
     .aria-mic-btn.aria-listening {
-      background: rgba(184, 134, 11, 0.18);
-      animation: aria-pulse 1.4s ease-out infinite;
+      background: #3A6246;
+      animation: aria-pulse 1.5s ease-out infinite;
     }
     .aria-mic-btn.aria-speaking {
-      color: var(--gold-light);
-      box-shadow: 0 0 28px rgba(212, 160, 23, 0.55);
+      background: #D4A853;
+      box-shadow: 0 4px 24px rgba(212,168,83,0.55);
     }
 
     .aria-hint {
-      font-size: 11px;
-      color: var(--muted);
+      font-size: 10.5px;
+      color: #A8A29E;
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
 
+    /* ── Text input ── */
     .aria-text-wrap {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 0 16px 16px;
-      background: #0a0805;
+      padding: 0 14px 16px;
+      background: #FFFFFF;
     }
     #aria-text-input {
       flex: 1;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(184, 134, 11, 0.3);
+      background: #FAF7F2;
+      border: 1px solid #E8E1D9;
       border-radius: 22px;
       padding: 10px 16px;
-      color: var(--cream);
+      color: #1C1917;
       font-size: 13.5px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    #aria-text-input::placeholder { color: rgba(255, 255, 255, 0.3); }
-    #aria-text-input:focus { border-color: rgba(184, 134, 11, 0.6); }
+    #aria-text-input::placeholder { color: #A8A29E; }
+    #aria-text-input:focus { border-color: #4A7C59; box-shadow: 0 0 0 3px rgba(74,124,89,0.12); }
     #aria-send-btn {
       width: 40px;
       height: 40px;
       border-radius: 50%;
       border: none;
-      background: var(--gold);
-      color: #1a1510;
+      background: #4A7C59;
+      color: white;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
       transition: background 0.2s, transform 0.2s;
+      box-shadow: 0 2px 8px rgba(74,124,89,0.35);
     }
-    #aria-send-btn:hover { background: var(--gold-light); transform: scale(1.06); }
-    #aria-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #aria-send-btn:hover { background: #3A6246; transform: scale(1.06); }
+    #aria-send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
 
+    /* ── Float button ── */
     #aria-float-btn {
       position: fixed;
       bottom: 28px;
-      right: 20px;
-      height: 52px;
-      width: auto;
-      padding: 0 20px 0 16px;
-      border-radius: 26px;
-      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
-      border: none;
-      color: #1a1510;
+      right: 24px;
       z-index: 10000;
       display: none;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      padding: 10px 16px 10px 10px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, #4A7C59 0%, #3A6246 100%);
+      border: none;
+      color: white;
       cursor: pointer;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      box-shadow: 0 4px 20px rgba(184, 134, 11, 0.55), 0 1px 4px rgba(0,0,0,0.3);
-      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 8px 32px rgba(74,124,89,0.5), 0 2px 8px rgba(0,0,0,0.12);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      animation: aria-float-entrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     }
     #aria-float-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(184, 134, 11, 0.7), 0 2px 8px rgba(0,0,0,0.3);
+      transform: translateY(-3px);
+      box-shadow: 0 14px 40px rgba(74,124,89,0.6), 0 4px 12px rgba(0,0,0,0.15);
     }
-    #aria-float-label {
+    #aria-float-btn:active { transform: translateY(-1px); }
+
+    .aria-float-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      border: 1.5px solid rgba(255,255,255,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+    .aria-float-text {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      text-align: left;
+    }
+    .aria-float-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.01em;
       white-space: nowrap;
     }
+    .aria-float-sub {
+      font-size: 10px;
+      color: rgba(255,255,255,0.65);
+      white-space: nowrap;
+      letter-spacing: 0.02em;
+    }
+    .aria-float-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #EF4444;
+      border: 2px solid white;
+      font-size: 9px;
+      font-weight: 800;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 0;
+    }
 
+    /* Pulsing glow ring behind float button */
+    #aria-float-ring {
+      position: fixed;
+      bottom: 22px;
+      right: 18px;
+      z-index: 9999;
+      width: calc(100% - 42px + 28px);
+      pointer-events: none;
+      display: none;
+    }
+    #aria-float-ring.aria-ring-visible {
+      display: block;
+      animation: aria-ring-pulse 2.8s ease-in-out infinite;
+    }
+    @keyframes aria-ring-pulse {
+      0%, 100% { opacity: 0; transform: scale(0.95); }
+      40% { opacity: 1; transform: scale(1.04); }
+    }
+
+    /* ── Keyframes ── */
     @keyframes aria-fade-in {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -307,11 +384,16 @@
       to { opacity: 1; transform: translateY(0); }
     }
     @keyframes aria-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(184, 134, 11, 0.55); }
-      70% { box-shadow: 0 0 0 14px rgba(184, 134, 11, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(184, 134, 11, 0); }
+      0%   { box-shadow: 0 4px 20px rgba(74,124,89,0.4), 0 0 0 0 rgba(74,124,89,0.5); }
+      70%  { box-shadow: 0 4px 20px rgba(74,124,89,0.4), 0 0 0 16px rgba(74,124,89,0); }
+      100% { box-shadow: 0 4px 20px rgba(74,124,89,0.4), 0 0 0 0 rgba(74,124,89,0); }
+    }
+    @keyframes aria-float-entrance {
+      from { transform: translateY(80px) scale(0.8); opacity: 0; }
+      to   { transform: translateY(0) scale(1); opacity: 1; }
     }
 
+    /* ── Mobile full-screen ── */
     @media (max-width: 640px) {
       #aria-overlay {
         align-items: flex-end;
@@ -324,6 +406,7 @@
         height: 100dvh;
         margin: 0;
         border-radius: 0;
+        border: none;
         display: flex;
         flex-direction: column;
         animation: aria-slide-up 0.35s cubic-bezier(0.32, 0.72, 0, 1);
@@ -331,10 +414,13 @@
       .aria-transcript {
         flex: 1;
         height: auto;
-        -webkit-overflow-scrolling: touch;
       }
       .aria-text-wrap {
         padding-bottom: max(16px, env(safe-area-inset-bottom));
+      }
+      #aria-float-btn {
+        bottom: 20px;
+        right: 16px;
       }
     }
   `;
@@ -353,10 +439,13 @@
       <div id="aria-overlay">
         <div id="aria-widget">
           <div class="aria-header">
-            <div class="aria-avatar">✦</div>
-            <div>
-              <div class="aria-name">Aria <em>Concierge</em></div>
-              <div class="aria-status" id="aria-status-text">Ready</div>
+            <div class="aria-avatar-wrap">
+              <div class="aria-avatar">✦</div>
+              <div class="aria-online-dot"></div>
+            </div>
+            <div class="aria-header-info">
+              <div class="aria-name">Aria <em>Image Salon · AI Frontdesk</em></div>
+              <div class="aria-status" id="aria-status-text">Online now</div>
             </div>
             <button class="aria-close-btn" id="aria-close-btn" title="Minimize">×</button>
           </div>
@@ -381,14 +470,13 @@
           </div>
         </div>
       </div>
-      <button id="aria-float-btn" title="Chat with Aria">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-          <line x1="12" y1="19" x2="12" y2="22"/>
-          <line x1="8" y1="22" x2="16" y2="22"/>
-        </svg>
-        <span id="aria-float-label">Chat with Aria</span>
+      <button id="aria-float-btn" title="Talk to Aria">
+        <div class="aria-float-avatar">✦</div>
+        <div class="aria-float-text">
+          <span class="aria-float-title">Talk to Aria</span>
+          <span class="aria-float-sub">AI Frontdesk · Ask me anything</span>
+        </div>
+        <span class="aria-float-badge">1</span>
       </button>
     `;
     document.body.insertAdjacentHTML('beforeend', html);
@@ -794,6 +882,9 @@
   function openOverlay() {
     if (overlay) overlay.classList.remove('aria-hidden');
     if (floatBtn) floatBtn.style.display = 'none';
+    // Dismiss notification badge on first open
+    const badge = document.querySelector('.aria-float-badge');
+    if (badge) badge.style.display = 'none';
     triggerGreeting();
   }
 
