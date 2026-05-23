@@ -224,6 +224,44 @@
       text-transform: uppercase;
     }
 
+    .aria-text-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px 16px;
+      background: #0a0805;
+    }
+    #aria-text-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(184, 134, 11, 0.3);
+      border-radius: 22px;
+      padding: 10px 16px;
+      color: var(--cream);
+      font-size: 13.5px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #aria-text-input::placeholder { color: rgba(255, 255, 255, 0.3); }
+    #aria-text-input:focus { border-color: rgba(184, 134, 11, 0.6); }
+    #aria-send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--gold);
+      color: #1a1510;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s, transform 0.2s;
+    }
+    #aria-send-btn:hover { background: var(--gold-light); transform: scale(1.06); }
+    #aria-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
     #aria-float-btn {
       position: fixed;
       bottom: 28px;
@@ -294,8 +332,8 @@
         height: auto;
         -webkit-overflow-scrolling: touch;
       }
-      .aria-controls {
-        padding-bottom: max(20px, env(safe-area-inset-bottom));
+      .aria-text-wrap {
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
       }
     }
   `;
@@ -333,6 +371,12 @@
               </svg>
             </button>
             <div class="aria-hint" id="aria-hint-text">Tap to speak</div>
+          </div>
+          <div class="aria-text-wrap">
+            <input type="text" id="aria-text-input" placeholder="Type a message…" autocomplete="off" />
+            <button id="aria-send-btn" title="Send">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
           </div>
         </div>
       </div>
@@ -730,13 +774,32 @@
     closeBtn.addEventListener('click', closeOverlay);
     floatBtn.addEventListener('click', openOverlay);
 
+    const textInput = document.getElementById('aria-text-input');
+    const sendBtn = document.getElementById('aria-send-btn');
+
+    function sendTypedMessage() {
+      const text = textInput.value.trim();
+      if (!text || isSpeaking || processingUtterance) return;
+      textInput.value = '';
+      conversationActive = true;
+      clearInterim();
+      addMsg('user', text);
+      processingUtterance = true;
+      sendToLLM();
+    }
+
+    textInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTypedMessage(); }
+    });
+    sendBtn.addEventListener('click', sendTypedMessage);
+
     // Mobile keyboard: push input bar above keyboard when it opens
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
-        const controls = document.querySelector('.aria-controls');
-        if (controls && overlay && !overlay.classList.contains('aria-hidden')) {
+        const textWrap = document.querySelector('.aria-text-wrap');
+        if (textWrap && overlay && !overlay.classList.contains('aria-hidden')) {
           const keyboardHeight = Math.max(0, window.innerHeight - window.visualViewport.height);
-          controls.style.paddingBottom = Math.max(20, keyboardHeight) + 'px';
+          textWrap.style.paddingBottom = Math.max(16, keyboardHeight) + 'px';
         }
       });
     }

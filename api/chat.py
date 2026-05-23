@@ -36,7 +36,8 @@ SYSTEM_PROMPT_TEMPLATE = (
     "- If the user asks about pricing, services, availability, or hours: answer fully first, no booking push.\n"
     "- Only start the booking flow when the user uses a booking trigger word: "
     "book, reserve, schedule, appointment, yes I want to book, let's do it.\n"
-    "- If the user is just exploring: answer their questions helpfully, no pressure.\n\n"
+    "- If the user is just exploring: answer their questions helpfully, no pressure.\n"
+    "- Availability or hours questions ('when are you open', 'are you available', 'what times', 'do you have openings'): answer with business hours (Mon–Sat 9AM–6PM) as plain text only — NEVER call book_appointment for these.\n\n"
     "BOOKING FLOW — follow these steps IN ORDER (only activate when user explicitly asks to book):\n"
     "STEP 1 — Collect conversationally, one question at a time:\n"
     "  → Full name\n"
@@ -289,7 +290,11 @@ class handler(BaseHTTPRequestHandler):
             tool_calls = choice.get('tool_calls')
 
             if tool_calls:
-                args = json.loads(tool_calls[0]['function']['arguments'])
+                try:
+                    args = json.loads(tool_calls[0]['function']['arguments'])
+                except (json.JSONDecodeError, KeyError, IndexError):
+                    self._send_json(200, {"text": "I'm here to help! What would you like to know?"})
+                    return
 
                 # BOOKING GATE: never write to Supabase without explicit user confirmation
                 if not _user_confirmed(messages):
@@ -346,7 +351,10 @@ class handler(BaseHTTPRequestHandler):
                 self._send_json(200, {"text": text, "booked": True})
                 return
 
-            self._send_json(200, {"text": choice.get('content', '')})
+            content = (choice.get('content') or '').strip()
+            if not content:
+                content = "I'm here to help! Could you tell me a bit more about what you're looking for?"
+            self._send_json(200, {"text": content})
 
         except Exception as e:
             tb = traceback.format_exc()
