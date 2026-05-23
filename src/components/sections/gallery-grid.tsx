@@ -108,12 +108,16 @@ export function GalleryGrid() {
             {/* Hover overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#1C1917]/75 via-[#1C1917]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex flex-col justify-end p-4">
               <div className="translate-y-3 group-hover:translate-y-0 transition-transform duration-400">
-                <div className="inline-flex items-center gap-1.5 bg-white text-[#1C1917] px-3.5 py-1.5 rounded-full text-[11px] font-sans font-bold shadow-lg w-fit">
+                <Link
+                  href="/booking"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 bg-white text-[#1C1917] px-3.5 py-1.5 rounded-full text-[11px] font-sans font-bold shadow-lg w-fit hover:bg-[#EFF5F1] hover:text-[#4A7C59] transition-colors"
+                >
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                   </svg>
                   Book this look
-                </div>
+                </Link>
               </div>
             </div>
           </div>
