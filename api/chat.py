@@ -7,22 +7,62 @@ import httpx
 from supabase import create_client
 
 
+CONFIRMATION_WORDS = {
+    'yes', 'yep', 'yeah', 'yup', 'ok', 'okay', 'sure', 'definitely',
+    'confirmed', 'correct', 'go ahead', 'book it', "let's do it",
+    'please book', 'do it', 'sounds good', 'perfect',
+}
+
+
+def _user_confirmed(messages):
+    """Return True only if the most recent user message is an explicit confirmation."""
+    for msg in reversed(messages):
+        if msg.get('role') == 'user':
+            text = msg.get('content', '').lower().strip().rstrip('!.,?')
+            return any(phrase in text for phrase in CONFIRMATION_WORDS)
+    return False
+
+
 SYSTEM_PROMPT_TEMPLATE = (
-    "You are Aria, a warm and professional AI reservation specialist for an image salon. "
+    "You are Aria, a warm and professional AI concierge for Image Salon. "
     "You speak naturally and conversationally, like a real receptionist.\n\n"
+    "OPENING GREETING (only when the conversation has no prior messages):\n"
+    "Say exactly: \"Hi! I'm Aria. I'm here to help you. Would you like to book an appointment with us, "
+    "or explore our website first? Feel free to hide me anytime — just click the X above!\"\n\n"
     "SALON SERVICES & PRICING:\n"
     "{rag_block}\n\n"
-    "BOOKING RULES:\n"
-    "- Collect: full name, phone number, preferred date, preferred time, service name\n"
-    "- Ask one question at a time — never dump a form on the customer\n"
-    "- Confirm all details before booking\n"
-    "- Once confirmed, call the book_appointment function\n"
-    "- Business hours: Monday-Saturday 9AM-7PM\n"
+    "CONVERSATION RULES:\n"
+    "- NEVER assume the user wants to book. They may just be exploring.\n"
+    "- If the user asks about pricing, services, availability, or hours: answer fully first, no booking push.\n"
+    "- Only start the booking flow when the user uses a booking trigger word: "
+    "book, reserve, schedule, appointment, yes I want to book, let's do it.\n"
+    "- If the user is just exploring: answer their questions helpfully, no pressure.\n\n"
+    "BOOKING FLOW — follow these steps IN ORDER (only activate when user explicitly asks to book):\n"
+    "STEP 1 — Collect conversationally, one question at a time:\n"
+    "  → Full name\n"
+    "  → Phone number\n"
+    "  → Service needed\n"
+    "  → Address\n"
+    "  → Preferred date (ask naturally, e.g. 'What date works best for you?')\n"
+    "STEP 2 — After all info collected, present availability:\n"
+    "  → Say: 'I have [date] available for [service]. Does that work for you?'\n"
+    "STEP 3 — Show this exact confirmation summary (do NOT call book_appointment yet):\n"
+    "  'Just to confirm:\n"
+    "   Name: [name]\n"
+    "   Phone: [phone]\n"
+    "   Service: [service]\n"
+    "   Address: [address]\n"
+    "   Date & Time: [natural language date and time]\n\n"
+    "   Shall I go ahead and book this for you?'\n"
+    "STEP 4 — ONLY call book_appointment AFTER user says: yes, confirm, go ahead, book it, or that's correct\n"
+    "CRITICAL: NEVER call book_appointment before completing Step 3 and receiving explicit yes.\n"
+    "- Business hours: Monday-Saturday 9AM-6PM\n"
     "- Same-day bookings allowed if time slot is available\n\n"
     "PERSONALITY:\n"
     "- Warm, elegant, concise — max 2 sentences per response\n"
     "- If asked about services not in the list, say \"Let me check on that for you\"\n"
-    "- Always greet first-time visitors: \"Hello! I'm Aria, your salon concierge. How can I help you today?\""
+    "- Never show dates in YYYY-MM-DD format to the user — always use natural language\n"
+    "- Never expose technical errors or database terms to the user"
 )
 
 
@@ -39,8 +79,8 @@ TOOLS = [{
                 "client_email": {"type": "string", "description": "optional, ask only if offered"},
                 "service_id": {"type": "string", "description": "UUID from services table"},
                 "service_name": {"type": "string"},
-                "preferred_date": {"type": "string", "description": "YYYY-MM-DD format"},
-                "preferred_time": {"type": "string", "description": "HH:MM:SS format"},
+                "preferred_date": {"type": "string", "description": "YYYY-MM-DD format — for Supabase storage only, never show this format to the user"},
+                "preferred_time": {"type": "string", "description": "HH:MM:SS format — for Supabase storage only, always confirm time in natural language first"},
                 "notes": {"type": "string", "description": "any additional requests"}
             },
             "required": ["client_name", "client_phone", "service_id", "service_name", "preferred_date", "preferred_time"]
@@ -80,6 +120,43 @@ def _build_rag_block(supabase):
     return "\n".join(lines)
 
 
+GROQ_TRIGGER_CODES = {429, 500, 503}
+OPENROUTER_SKIP_CODES = {402, 404, 429}
+ANTHROPIC_TRIGGER_CODES = {429, 500, 503}
+FREE_MODELS = [
+    "openai/gpt-oss-20b:free",
+    "deepseek/deepseek-v4-flash:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "google/gemma-4-31b-it:free",
+]
+
+
+def _anthropic_tools(openai_tools):
+    result = []
+    for t in openai_tools:
+        f = t['function']
+        result.append({"name": f['name'], "description": f['description'], "input_schema": f['parameters']})
+    return result
+
+
+def _parse_anthropic_choice(data):
+    content = data.get('content', [])
+    text = ' '.join(c.get('text', '') for c in content if c.get('type') == 'text').strip()
+    tool_use = next((c for c in content if c.get('type') == 'tool_use'), None)
+    if tool_use:
+        return {
+            'content': text,
+            'tool_calls': [{'function': {'name': tool_use['name'], 'arguments': json.dumps(tool_use['input'])}}]
+        }
+    return {'content': text, 'tool_calls': None}
+
+
+def _log_fail(provider, reason):
+    ts = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+    print(f"[chat] [{ts}] provider={provider} reason={reason}")
+
+
 class handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
@@ -105,17 +182,11 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
+            groq_key = os.environ.get('GROQ_API_KEY')
             openrouter_key = os.environ.get('OPENROUTER_API_KEY')
+            anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
             supabase_url = os.environ.get('SUPABASE_URL') or os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
             supabase_key = os.environ.get('SUPABASE_SERVICE_KEY') or os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
-            site_url = os.environ.get('SITE_URL', '')
-
-            print(f"[chat] OPENROUTER_API_KEY set: {bool(openrouter_key)}")
-            print(f"[chat] SUPABASE_URL set: {bool(supabase_url)}")
-            print(f"[chat] SUPABASE_KEY set: {bool(supabase_key)}")
-            if not openrouter_key:
-                self._send_json(500, {"error": "OPENROUTER_API_KEY is not set in environment"})
-                return
 
             content_length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(content_length))
@@ -125,59 +196,118 @@ class handler(BaseHTTPRequestHandler):
             rag_block = _build_rag_block(supabase)
             system_prompt = SYSTEM_PROMPT_TEMPLATE.replace('{rag_block}', rag_block)
 
-            FREE_MODELS = [
-                "openai/gpt-oss-20b:free",
-                "deepseek/deepseek-v4-flash:free",
-                "meta-llama/llama-3.3-70b-instruct:free",
-                "meta-llama/llama-3.2-3b-instruct:free",
-                "google/gemma-4-31b-it:free",
-            ]
-            SKIP_CODES = {402, 404, 429}
+            full_messages = [{"role": "system", "content": system_prompt}] + messages
+            choice = None
 
-            payload = {
-                "model": FREE_MODELS[0],
-                "messages": [{"role": "system", "content": system_prompt}] + messages,
-                "tools": TOOLS,
-                "tool_choice": "auto",
-                "max_tokens": 200,
-            }
-            headers = {
-                "Authorization": f"Bearer {openrouter_key}",
-                "HTTP-Referer": "https://image-salon-three.vercel.app",
-                "X-Title": "Image Salon Aria",
-                "Content-Type": "application/json",
-            }
+            # ── PRIMARY: Groq (5s timeout) ────────────────────────────
+            if groq_key and choice is None:
+                try:
+                    with httpx.Client(timeout=5.0) as client:
+                        r = client.post(
+                            "https://api.groq.com/openai/v1/chat/completions",
+                            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                            json={
+                                "model": "llama-3.1-8b-instant",
+                                "messages": full_messages,
+                                "tools": TOOLS,
+                                "tool_choice": "auto",
+                                "max_tokens": 200,
+                            },
+                        )
+                    if r.status_code not in GROQ_TRIGGER_CODES:
+                        r.raise_for_status()
+                        choice = r.json()['choices'][0]['message']
+                    else:
+                        _log_fail('groq', f'HTTP {r.status_code}')
+                except httpx.TimeoutException:
+                    _log_fail('groq', 'timeout >5s')
+                except Exception as e:
+                    _log_fail('groq', str(e))
 
-            with httpx.Client(timeout=30.0) as client:
-                response = None
-                failed_models = []
-                for model_id in FREE_MODELS:
-                    payload["model"] = model_id
-                    print(f"[chat] trying model: {model_id}")
-                    response = client.post(
-                        "https://openrouter.ai/api/v1/chat/completions",
-                        headers=headers,
-                        json=payload,
-                    )
-                    if response.status_code not in SKIP_CODES:
-                        print(f"[chat] success with model: {model_id} status={response.status_code}")
-                        break
-                    err_body = response.text[:200]
-                    failed_models.append(f"{model_id}={response.status_code}:{err_body}")
-                    print(f"[chat] model {model_id} returned {response.status_code}: {err_body}")
-                    time.sleep(1)
+            # ── FALLBACK 1: OpenRouter (free model loop) ───────────────
+            if openrouter_key and choice is None:
+                try:
+                    or_headers = {
+                        "Authorization": f"Bearer {openrouter_key}",
+                        "HTTP-Referer": "https://image-salon-three.vercel.app",
+                        "X-Title": "Image Salon Aria",
+                        "Content-Type": "application/json",
+                    }
+                    with httpx.Client(timeout=30.0) as client:
+                        for model_id in FREE_MODELS:
+                            r = client.post(
+                                "https://openrouter.ai/api/v1/chat/completions",
+                                headers=or_headers,
+                                json={
+                                    "model": model_id,
+                                    "messages": full_messages,
+                                    "tools": TOOLS,
+                                    "tool_choice": "auto",
+                                    "max_tokens": 200,
+                                },
+                            )
+                            if r.status_code not in OPENROUTER_SKIP_CODES:
+                                r.raise_for_status()
+                                choice = r.json()['choices'][0]['message']
+                                break
+                            _log_fail(f'openrouter/{model_id}', f'HTTP {r.status_code}')
+                            time.sleep(1)
+                except Exception as e:
+                    _log_fail('openrouter', str(e))
 
-                if response.status_code in SKIP_CODES:
-                    self._send_json(200, {"text": "I'm a little busy right now — please try again in a moment!", "debug": failed_models})
-                    return
-                response.raise_for_status()
-                data = response.json()
+            # ── FALLBACK 2: Anthropic ──────────────────────────────────
+            if anthropic_key and choice is None:
+                try:
+                    with httpx.Client(timeout=30.0) as client:
+                        r = client.post(
+                            "https://api.anthropic.com/v1/messages",
+                            headers={
+                                "x-api-key": anthropic_key,
+                                "anthropic-version": "2023-06-01",
+                                "Content-Type": "application/json",
+                            },
+                            json={
+                                "model": "claude-haiku-3-5-20251001",
+                                "max_tokens": 200,
+                                "system": system_prompt,
+                                "messages": messages,
+                                "tools": _anthropic_tools(TOOLS),
+                            },
+                        )
+                    if r.status_code not in ANTHROPIC_TRIGGER_CODES:
+                        r.raise_for_status()
+                        choice = _parse_anthropic_choice(r.json())
+                    else:
+                        _log_fail('anthropic', f'HTTP {r.status_code}')
+                except Exception as e:
+                    _log_fail('anthropic', str(e))
 
-            choice = data['choices'][0]['message']
+            # ── All providers failed ───────────────────────────────────
+            if choice is None:
+                self._send_json(200, {
+                    "text": "I'm having a little trouble connecting right now. Please try again in a moment!"
+                })
+                return
+
             tool_calls = choice.get('tool_calls')
 
             if tool_calls:
                 args = json.loads(tool_calls[0]['function']['arguments'])
+
+                # BOOKING GATE: never write to Supabase without explicit user confirmation
+                if not _user_confirmed(messages):
+                    time_str = args.get('preferred_time', '')
+                    display_time = time_str[:5] if len(time_str) >= 5 else time_str
+                    confirm_text = (
+                        "Just to confirm:\n"
+                        f"Name: {args.get('client_name', '')}\n"
+                        f"Phone: {args.get('client_phone', '')}\n"
+                        f"Service: {args.get('service_name', '')}\n"
+                        f"Date & Time: {args.get('preferred_date', '')} at {display_time}\n\n"
+                        "Shall I go ahead and book this for you?"
+                    )
+                    self._send_json(200, {"text": confirm_text, "booked": False})
+                    return
 
                 existing = supabase.table('bookings').select('id').eq(
                     'client_name', args['client_name']

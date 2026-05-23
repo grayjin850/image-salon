@@ -151,10 +151,10 @@ export function BookingForm() {
           <div>
             <label className={labelClass}>Preferred Date</label>
             <input
-              type="date"
+              type="text"
               className={inputClass}
+              placeholder="e.g. May 8 or next Monday"
               value={form.preferred_date}
-              min={new Date().toISOString().split('T')[0]}
               onChange={(e) => setForm({ ...form, preferred_date: e.target.value })}
             />
             {errors.preferred_date && <p className="text-red-400 text-xs mt-1">{errors.preferred_date}</p>}
@@ -164,8 +164,9 @@ export function BookingForm() {
           <div>
             <label className={labelClass}>Preferred Time</label>
             <input
-              type="time"
+              type="text"
               className={inputClass}
+              placeholder="e.g. 2pm or afternoon"
               value={form.preferred_time}
               onChange={(e) => setForm({ ...form, preferred_time: e.target.value })}
             />

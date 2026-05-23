@@ -111,6 +111,7 @@
     .aria-transcript {
       height: 260px;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       padding: 16px;
       display: flex;
       flex-direction: column;
@@ -226,30 +227,41 @@
     #aria-float-btn {
       position: fixed;
       bottom: 28px;
-      right: 28px;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
+      right: 20px;
+      height: 52px;
+      width: auto;
+      padding: 0 20px 0 16px;
+      border-radius: 26px;
       background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
       border: none;
       color: #1a1510;
       z-index: 10000;
       display: none;
       align-items: center;
-      justify-content: center;
+      gap: 8px;
       cursor: pointer;
-      font-size: 22px;
-      box-shadow: 0 8px 32px rgba(184, 134, 11, 0.5);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      box-shadow: 0 4px 20px rgba(184, 134, 11, 0.55), 0 1px 4px rgba(0,0,0,0.3);
       transition: transform 0.2s, box-shadow 0.2s;
     }
     #aria-float-btn:hover {
-      transform: scale(1.08);
-      box-shadow: 0 10px 40px rgba(184, 134, 11, 0.7);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(184, 134, 11, 0.7), 0 2px 8px rgba(0,0,0,0.3);
+    }
+    #aria-float-label {
+      white-space: nowrap;
     }
 
     @keyframes aria-fade-in {
       from { opacity: 0; }
       to { opacity: 1; }
+    }
+    @keyframes aria-slide-up {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
     @keyframes aria-msg-in {
       from { opacity: 0; transform: translateY(6px); }
@@ -259,6 +271,32 @@
       0% { box-shadow: 0 0 0 0 rgba(184, 134, 11, 0.55); }
       70% { box-shadow: 0 0 0 14px rgba(184, 134, 11, 0); }
       100% { box-shadow: 0 0 0 0 rgba(184, 134, 11, 0); }
+    }
+
+    @media (max-width: 640px) {
+      #aria-overlay {
+        align-items: flex-end;
+        padding: 0;
+      }
+      #aria-widget {
+        width: 100vw;
+        max-width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        margin: 0;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        animation: aria-slide-up 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+      }
+      .aria-transcript {
+        flex: 1;
+        height: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .aria-controls {
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+      }
     }
   `;
 
@@ -298,13 +336,14 @@
           </div>
         </div>
       </div>
-      <button id="aria-float-btn" title="Open Aria">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <button id="aria-float-btn" title="Chat with Aria">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
           <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
           <line x1="12" y1="19" x2="12" y2="22"/>
           <line x1="8" y1="22" x2="16" y2="22"/>
         </svg>
+        <span id="aria-float-label">Chat with Aria</span>
       </button>
     `;
     document.body.insertAdjacentHTML('beforeend', html);
@@ -323,6 +362,7 @@
   let recognition = null;
   let currentAudio = null;
   let animationFrame = null;
+  let audioCtx = null;
 
   // Element refs (assigned in init)
   let overlay, transcript, micBtn, closeBtn, floatBtn, statusText, hintText, vizBars;
@@ -403,6 +443,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       });
+      if (!res.ok) throw new Error(`TTS error ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
 
@@ -435,6 +476,10 @@
       audio.onerror = cleanup;
 
       try {
+        // Resume AudioContext if suspended by browser autoplay policy
+        if (audioCtx && audioCtx.state === 'suspended') {
+          try { await audioCtx.resume(); } catch (e) {}
+        }
         await audio.play();
         return true;
       } catch (err) {
@@ -442,11 +487,17 @@
         return false;
       }
     } catch (err) {
+      // TTS fetch/network failure — reset state and keep conversation loop alive
       isSpeaking = false;
+      processingUtterance = false;
+      intentionalStop = false;
       if (micBtn) micBtn.classList.remove('aria-speaking');
       animateBars(false);
       setStatus('Ready');
       setHint('Tap to speak');
+      if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
+        setTimeout(startListening, 400);
+      }
       return false;
     }
   }
@@ -485,7 +536,7 @@
     rec.lang = 'en-US';
     rec.interimResults = true;
     rec.maxAlternatives = 1;
-    rec.continuous = true;
+    rec.continuous = false;
 
     rec.onstart = () => {
       isListening = true;
@@ -518,11 +569,11 @@
     rec.onerror = (event) => {
       const errorType = event && event.error ? event.error : 'unknown';
       console.log('[Aria] speech error:', errorType);
-      isListening = false;
-      if (micBtn) micBtn.classList.remove('aria-listening');
 
       if (errorType === 'not-allowed' || errorType === 'audio-capture') {
-        // Fatal: mic blocked — stop trying, show message
+        // Fatal — mic is blocked, stop trying
+        isListening = false;
+        if (micBtn) micBtn.classList.remove('aria-listening');
         conversationActive = false;
         intentionalStop = true;
         animateBars(false);
@@ -530,7 +581,8 @@
         setHint(errorType === 'not-allowed' ? 'Allow mic in settings' : 'Check microphone');
         return;
       }
-      // no-speech / network / aborted — let onend handle restart
+      // no-speech / network / aborted — onend will fire next and handle silent restart.
+      // Don't touch UI here so the mic button stays lit with no flicker.
     };
 
     rec.onend = () => {
@@ -614,7 +666,7 @@
   async function triggerGreeting() {
     if (messages.length !== 0) return;
     setStatus('Connecting…');
-    const fallback = "Hello! I'm Aria, your salon concierge. How can I help you today?";
+    const fallback = "Hi! I'm Aria. I'm here to help you. Would you like to book an appointment with us, or explore our website first? Feel free to hide me anytime — just click the X above!";
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -678,9 +730,24 @@
     closeBtn.addEventListener('click', closeOverlay);
     floatBtn.addEventListener('click', openOverlay);
 
+    // Mobile keyboard: push input bar above keyboard when it opens
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        const controls = document.querySelector('.aria-controls');
+        if (controls && overlay && !overlay.classList.contains('aria-hidden')) {
+          const keyboardHeight = Math.max(0, window.innerHeight - window.visualViewport.height);
+          controls.style.paddingBottom = Math.max(20, keyboardHeight) + 'px';
+        }
+      });
+    }
+
     // Play greeting on first user gesture (unlocks browser audio)
     document.addEventListener('click', async function onFirstClick() {
       document.removeEventListener('click', onFirstClick);
+      // Create AudioContext on first gesture to unlock audio for all future plays
+      if (!audioCtx) {
+        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+      }
       if (pendingGreeting) {
         const g = pendingGreeting;
         pendingGreeting = null;
