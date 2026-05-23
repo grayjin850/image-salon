@@ -3,221 +3,152 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { NAV_LINKS } from '@/constants';
+
+const NAV_ITEMS = [
+  { label: 'Home', href: '#home' },
+  { label: 'About', href: '#about' },
+  { label: 'Services', href: '#services' },
+  { label: 'Gallery', href: '#gallery' },
+  { label: 'Testimonials', href: '#testimonials' },
+];
 
 export function Nav() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [activeSection, setActiveSection] = useState('home');
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-      const sections = NAV_LINKS.map((l) => l.href.replace('#', ''));
-      for (const id of [...sections].reverse()) {
-        const el = document.getElementById(id);
-        if (el && window.scrollY >= el.offsetTop - 120) {
-          setActiveSection(id);
-          break;
-        }
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const handleNavClick = (href: string) => {
-  setIsOpen(false);
-
-  // Kung may / prefix — direct navigation (e.g. /booking)
-  if (href.startsWith('/')) {
-    window.location.href = href;
-    return;
-  }
-
-  const id = href.replace('#', '');
-
-  // Kung nasa ibang page, pumunta muna sa home tapos scroll
-  if (window.location.pathname !== '/') {
-    window.location.href = '/' + href;
-    return;
-  }
-
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-};
-
-  const linkClass = (href: string) =>
-    `text-[10px] uppercase tracking-[0.4em] font-sans transition-colors duration-300 ${
-      activeSection === href.replace('#', '')
-        ? 'text-[#B8860B]'
-        : 'text-gray-300 hover:text-[#B8860B]'
-    }`;
+    setIsOpen(false);
+    if (href.startsWith('/')) {
+      window.location.href = href;
+      return;
+    }
+    const id = href.replace('#', '');
+    if (window.location.pathname !== '/') {
+      window.location.href = '/' + href;
+      return;
+    }
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled
-          ? 'bg-black/95 backdrop-blur-md border-b border-[#B8860B]/30'
-          : 'bg-transparent'
-      }`}
-    >
-      {/* Top bar — contact number (hides on scroll) */}
-      <div
-        className={`transition-all duration-500 overflow-hidden ${
-          scrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'
+    <>
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? 'bg-white/95 backdrop-blur-md border-b border-[#E8E1D9] shadow-sm'
+            : 'bg-[#FAF7F2]/80 backdrop-blur-sm'
         }`}
       >
-        <div className="flex justify-end items-center px-8 py-1.5 border-b border-[#B8860B]/15">
-          <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#B8860B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.64 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 5.45 5.45l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </svg>
-            <span className="text-[#B8860B] text-[10px] uppercase tracking-[0.3em] font-sans">
-              +691 320 3289
-            </span>
-          </div>
-        </div>
-      </div>
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-8">
 
-      {/* Main navbar */}
-      <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-        {/* Logo + Name */}
-       <Link
-  href="/"
-  className="flex items-center gap-3 hover:opacity-80 transition-opacity"
->
-          <Image
-            src="/images/logo.png"
-            alt="Image Salon & Spa"
-            width={44}
-            height={44}
-            className="object-contain"
-          />
-          <div className="flex-col items-start hidden sm:flex">
-            <span className="font-display text-lg italic text-[#B8860B] tracking-widest leading-tight">
-              Image Salon & Spa
-            </span>
-            <span className="text-[8px] uppercase tracking-[0.35em] text-[#B8860B]/50 font-sans leading-tight">
-              Where Beauty Meets Excellence
-            </span>
-          </div>
-        </Link>
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 hover:opacity-80 transition-opacity">
+            <Image
+              src="/images/logo.png"
+              alt="Image Salon & Spa"
+              width={36}
+              height={36}
+              className="object-contain"
+            />
+            <div className="hidden sm:block leading-tight">
+              <p className="font-sans font-bold text-[#1C1917] text-sm tracking-tight">Image Salon</p>
+              <p className="font-sans text-[9px] text-[#4A7C59] tracking-[0.18em] uppercase">& Spa</p>
+            </div>
+          </Link>
 
-        {/* Desktop links */}
-        <ul className="hidden md:flex gap-10">
-          {NAV_LINKS.map((link) => (
-            <li key={link.href}>
-              {link.href.startsWith('/') ? (
-                <Link href={link.href} className={linkClass(link.href)}>
-                  {link.label}
-                </Link>
-              ) : (
-                <button
-                  onClick={() => handleNavClick(link.href)}
-                  className={linkClass(link.href)}
-                >
-                  {link.label}
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-
-        {/* Mobile menu button */}
-        <button
-          className="md:hidden text-[10px] uppercase tracking-[0.4em] text-[#B8860B] font-sans"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {isOpen ? 'Close' : 'Menu'}
-        </button>
-      </div>
-
-      {/* Mobile fullscreen menu */}
-      {isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: '#000',
-            zIndex: 50,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '2rem',
-          }}
-        >
-          <Image
-            src="/images/logo.png"
-            alt="Image Salon & Spa"
-            width={80}
-            height={80}
-            className="object-contain mb-2"
-          />
-          <div className="text-center mb-2">
-            <p className="font-display text-2xl italic text-[#B8860B] tracking-widest">
-              Image Salon & Spa
-            </p>
-            <p className="text-[8px] uppercase tracking-[0.35em] text-[#B8860B]/50 font-sans mt-1">
-              Where Beauty Meets Excellence
-            </p>
-          </div>
-          {NAV_LINKS.map((link) => (
-            link.href.startsWith('/') ? (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsOpen(false)}
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '2.5rem',
-                  fontStyle: 'italic',
-                  color: '#B8860B',
-                  textDecoration: 'none',
-                }}
-              >
-                {link.label}
-              </Link>
-            ) : (
+          {/* Desktop nav links — centered pill group */}
+          <div className="hidden md:flex items-center gap-0.5 bg-white/70 border border-[#E8E1D9] rounded-full px-2 py-1.5">
+            {NAV_ITEMS.map((item) => (
               <button
-                key={link.href}
-                onClick={() => handleNavClick(link.href)}
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '2.5rem',
-                  fontStyle: 'italic',
-                  color: activeSection === link.href.replace('#', '') ? '#B8860B' : 'white',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
+                key={item.href}
+                onClick={() => handleNavClick(item.href)}
+                className="px-4 py-1.5 rounded-full text-[13px] font-sans font-medium text-[#44403C] hover:text-[#4A7C59] hover:bg-[#EFF5F1] transition-all duration-200 whitespace-nowrap"
               >
-                {link.label}
+                {item.label}
               </button>
-            )
-          ))}
-          <p className="text-[#B8860B]/50 text-[10px] uppercase tracking-[0.3em] font-sans mt-4">
-            +691 320 3289
-          </p>
-          <button
-            onClick={() => setIsOpen(false)}
-            style={{
-              position: 'absolute',
-              top: '1.5rem',
-              right: '2rem',
-              color: '#999',
-              fontSize: '0.75rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.3em',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Close
-          </button>
+            ))}
+          </div>
+
+          {/* Right: Book CTA + mobile hamburger */}
+          <div className="flex items-center gap-3 shrink-0">
+            <Link
+              href="/booking"
+              className="hidden md:inline-flex items-center gap-1.5 bg-[#4A7C59] text-white px-5 py-2 rounded-full text-[13px] font-sans font-semibold hover:bg-[#3A6246] transition-colors shadow-sm"
+            >
+              Book Now
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </Link>
+
+            {/* Mobile hamburger */}
+            <button
+              className="md:hidden w-9 h-9 flex flex-col items-center justify-center gap-[5px] rounded-full hover:bg-[#EFF5F1] transition-colors"
+              onClick={() => setIsOpen(!isOpen)}
+              aria-label="Toggle menu"
+            >
+              <span className={`h-[1.5px] w-5 bg-[#1C1917] rounded-full transition-all duration-300 origin-center ${isOpen ? 'rotate-45 translate-y-[6.5px]' : ''}`} />
+              <span className={`h-[1.5px] w-5 bg-[#1C1917] rounded-full transition-all duration-300 ${isOpen ? 'opacity-0 scale-x-0' : ''}`} />
+              <span className={`h-[1.5px] w-5 bg-[#1C1917] rounded-full transition-all duration-300 origin-center ${isOpen ? '-rotate-45 -translate-y-[6.5px]' : ''}`} />
+            </button>
+          </div>
         </div>
-      )}
-    </nav>
+      </nav>
+
+      {/* Mobile drawer */}
+      <div
+        className={`fixed inset-0 z-40 md:hidden transition-all duration-300 ${
+          isOpen ? 'pointer-events-auto' : 'pointer-events-none'
+        }`}
+      >
+        {/* Backdrop */}
+        <div
+          className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setIsOpen(false)}
+        />
+
+        {/* Slide-in panel */}
+        <div
+          className={`absolute top-0 right-0 bottom-0 w-72 bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+            isOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          <div className="h-16 flex items-center px-6 border-b border-[#E8E1D9]">
+            <p className="font-sans font-bold text-[#1C1917] text-sm">Menu</p>
+          </div>
+
+          <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.href}
+                onClick={() => handleNavClick(item.href)}
+                className="w-full text-left px-4 py-3 rounded-xl font-sans font-medium text-[#44403C] hover:text-[#4A7C59] hover:bg-[#EFF5F1] transition-all duration-200 text-sm"
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="px-6 pb-8">
+            <Link
+              href="/booking"
+              onClick={() => setIsOpen(false)}
+              className="w-full flex items-center justify-center gap-2 bg-[#4A7C59] text-white py-3 rounded-full font-sans font-semibold text-sm hover:bg-[#3A6246] transition-colors"
+            >
+              Book an Appointment
+            </Link>
+            <p className="text-[#A8A29E] text-[11px] font-sans text-center mt-4">
+              +691 320 3289 · Mon–Sat 9AM–6PM
+            </p>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

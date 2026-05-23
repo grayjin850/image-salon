@@ -5,31 +5,13 @@ import { createClient } from '@/lib/supabase/client';
 import { Service } from '@/types';
 import Link from 'next/link';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  hair: 'Hair',
-  skin: 'Skin Care',
-  nails: 'Nails',
-  packages: 'Packages',
-  waxing: 'Waxing',
-  massage: 'Massage',
-};
-
-const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  hair: 'Cut, color & treatments',
-  skin: 'Facials & skincare',
-  nails: 'Manicure & pedicure',
-  packages: 'Value bundles',
-  waxing: 'Hair removal services',
-  massage: 'Relaxation & therapy',
-};
-
-const CATEGORY_ICONS: Record<string, string> = {
-  hair: '✂',
-  skin: '✦',
-  nails: '◆',
-  packages: '★',
-  waxing: '◇',
-  massage: '◉',
+const CATEGORY_META: Record<string, { label: string; desc: string; icon: string; color: string; bg: string }> = {
+  hair:     { label: 'Hair',       desc: 'Cut, color & treatment',    icon: '✂',  color: '#4A7C59', bg: '#EFF5F1' },
+  nails:    { label: 'Nails',      desc: 'Manicure & pedicure',       icon: '💅', color: '#B56AB6', bg: '#F8EFF8' },
+  skin:     { label: 'Skin Care',  desc: 'Facials & skincare',        icon: '✦',  color: '#D4A853', bg: '#FBF3E2' },
+  waxing:   { label: 'Waxing',     desc: 'Smooth hair removal',       icon: '◇',  color: '#C97A5B', bg: '#FBF1EC' },
+  massage:  { label: 'Massage',    desc: 'Relaxation & therapy',      icon: '◉',  color: '#5B8AC9', bg: '#EEF3FB' },
+  packages: { label: 'Packages',   desc: 'Value bundles & combos',    icon: '★',  color: '#7C5BAF', bg: '#F3EEF8' },
 };
 
 const CATEGORIES = ['hair', 'nails', 'skin', 'waxing', 'massage', 'packages'];
@@ -52,14 +34,13 @@ export function ServicesGrid() {
     fetchServices();
   }, []);
 
-  // Scroll-triggered reveal
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.querySelectorAll('.reveal-card').forEach((el, i) => {
-              setTimeout(() => el.classList.add('visible'), i * 100);
+              setTimeout(() => el.classList.add('visible'), i * 80);
             });
           }
         });
@@ -70,90 +51,97 @@ export function ServicesGrid() {
     return () => observer.disconnect();
   }, []);
 
-  // Close modal on Escape key
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setActiveModal(null);
-    };
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setActiveModal(null); };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
-  // Prevent body scroll when modal is open
   useEffect(() => {
-    if (activeModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = activeModal ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [activeModal]);
 
   const scrollToBooking = () => {
     setActiveModal(null);
-    setTimeout(() => {
-      document.getElementById('booking')?.scrollIntoView({ behavior: 'smooth' });
-    }, 300);
+    setTimeout(() => document.getElementById('booking')?.scrollIntoView({ behavior: 'smooth' }), 300);
   };
 
-  const modalServices = activeModal
-    ? services.filter((s) => s.category === activeModal)
-    : [];
+  const modalServices = activeModal ? services.filter((s) => s.category === activeModal) : [];
+  const meta = activeModal ? CATEGORY_META[activeModal] : null;
 
   return (
-    <section id="services" className="py-32 bg-black" ref={sectionRef}>
-      <div className="max-w-7xl mx-auto px-8">
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <div className="h-px w-16 bg-[#B8860B]/50" />
-          <p className="text-[#B8860B] uppercase tracking-[0.6em] text-xs font-sans">
-            What We Offer
-          </p>
-          <div className="h-px w-16 bg-[#B8860B]/50" />
-        </div>
-        <h2 className="font-display text-5xl md:text-6xl text-white font-light italic text-center mb-20">
-          Our Services
-        </h2>
+    <section id="services" className="py-28 bg-[#FAF7F2]" ref={sectionRef}>
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
 
-        {/* 6-category grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[#B8860B]/20">
+        {/* Section header */}
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 border border-[#4A7C59]/25 bg-[#EFF5F1] rounded-full px-4 py-1.5 mb-5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#4A7C59]" />
+            <span className="text-[#4A7C59] text-xs font-sans font-semibold tracking-wide">What We Offer</span>
+          </div>
+          <h2 className="font-sans font-extrabold text-[#1C1917] tracking-tight mb-4"
+              style={{ fontSize: 'clamp(2rem, 5vw, 3.25rem)' }}>
+            Our Services
+          </h2>
+          <p className="text-[#78716C] text-base font-sans max-w-xl mx-auto">
+            From hair to nails to full-body packages — everything you need for a complete salon experience.
+          </p>
+        </div>
+
+        {/* 6-card grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {CATEGORIES.map((cat) => {
+            const m = CATEGORY_META[cat];
             const items = services.filter((s) => s.category === cat);
             return (
               <button
                 key={cat}
                 onClick={() => setActiveModal(cat)}
-                className="reveal-card bg-black p-10 hover:bg-[#B8860B]/5 transition-all duration-500 group opacity-0 translate-y-6 text-left cursor-pointer"
-                style={{ transition: 'opacity 0.6s ease, transform 0.6s ease, background-color 0.5s ease' }}
+                className="reveal-card text-left bg-white border border-[#E8E1D9] rounded-2xl p-6 card-hover cursor-pointer opacity-0 translate-y-6 group"
+                style={{ transition: 'opacity 0.5s ease, transform 0.5s ease' }}
               >
-                <p className="text-[#B8860B] text-xs mb-3">{CATEGORY_ICONS[cat] ?? '✦'}</p>
-                <h3 className="font-display text-2xl italic text-white font-light mb-1 group-hover:text-[#B8860B] transition-colors duration-300">
-                  {CATEGORY_LABELS[cat] ?? cat}
+                {/* Icon */}
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-5"
+                  style={{ backgroundColor: m.bg, color: m.color }}
+                >
+                  {m.icon}
+                </div>
+
+                {/* Title + desc */}
+                <h3 className="font-sans font-bold text-[#1C1917] text-lg mb-1 group-hover:text-[#4A7C59] transition-colors">
+                  {m.label}
                 </h3>
-                <p className="text-gray-600 text-[10px] uppercase tracking-[0.25em] font-sans mb-6">
-                  {CATEGORY_DESCRIPTIONS[cat] ?? ''}
-                </p>
-                <div className="h-px w-8 bg-[#B8860B]/50 mb-6" />
+                <p className="font-sans text-[#A8A29E] text-xs mb-5">{m.desc}</p>
+
+                {/* Price preview */}
                 {items.length > 0 ? (
-                  <ul className="space-y-3">
-                    {items.slice(0, 4).map((s) => (
+                  <ul className="space-y-2.5 mb-5">
+                    {items.slice(0, 3).map((s) => (
                       <li key={s.id} className="flex justify-between items-center gap-2">
-                        <span className="text-gray-400 text-xs font-sans tracking-wide truncate">{s.name}</span>
-                        <span className="text-[#B8860B] text-xs font-sans whitespace-nowrap">{s.price_label}</span>
+                        <span className="text-[#57534E] text-xs font-sans truncate">{s.name}</span>
+                        <span className="font-sans text-xs font-semibold whitespace-nowrap" style={{ color: m.color }}>
+                          {s.price_label}
+                        </span>
                       </li>
                     ))}
-                    {items.length > 4 && (
-                      <li className="text-[#B8860B]/50 text-[10px] uppercase tracking-[0.3em] font-sans pt-1">
-                        +{items.length - 4} more — tap to view
-                      </li>
-                    )}
                   </ul>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2.5 mb-5">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-3 bg-[#B8860B]/10 rounded-sm animate-pulse" />
+                      <div key={i} className="h-3 bg-[#F0EBE3] rounded-full animate-pulse" />
                     ))}
                   </div>
                 )}
+
+                {/* View all link */}
+                <div className="flex items-center gap-1.5 text-xs font-sans font-semibold" style={{ color: m.color }}>
+                  {items.length > 3 ? `+${items.length - 3} more` : 'View all'}
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
               </button>
             );
           })}
@@ -161,62 +149,68 @@ export function ServicesGrid() {
       </div>
 
       {/* Modal */}
-      {activeModal && (
+      {activeModal && meta && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+          style={{ backgroundColor: 'rgba(28,25,23,0.5)', backdropFilter: 'blur(4px)' }}
           onClick={() => setActiveModal(null)}
         >
           <div
-            className="relative w-full max-w-lg bg-[#0a0a0a] border border-[#B8860B]/30 max-h-[80vh] overflow-y-auto"
+            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden border border-[#E8E1D9]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
-            <div className="sticky top-0 bg-[#0a0a0a] border-b border-[#B8860B]/20 px-8 py-6 flex items-center justify-between z-10">
-              <div>
-                <p className="text-[#B8860B] text-[10px] uppercase tracking-[0.4em] font-sans mb-1">
-                  {CATEGORY_ICONS[activeModal]} Services
-                </p>
-                <h3 className="font-display text-3xl italic text-white font-light">
-                  {CATEGORY_LABELS[activeModal]}
-                </h3>
+            <div className="px-7 pt-7 pb-5 border-b border-[#F0EBE3] flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
+                  style={{ backgroundColor: meta.bg, color: meta.color }}
+                >
+                  {meta.icon}
+                </div>
+                <div>
+                  <p className="font-sans text-xs font-medium text-[#A8A29E] mb-0.5">Services</p>
+                  <h3 className="font-sans font-bold text-[#1C1917] text-xl">{meta.label}</h3>
+                </div>
               </div>
               <button
                 onClick={() => setActiveModal(null)}
-                className="text-gray-500 hover:text-[#B8860B] transition-colors text-[10px] uppercase tracking-[0.3em] font-sans"
+                className="w-8 h-8 rounded-full bg-[#F0EBE3] hover:bg-[#E8E1D9] flex items-center justify-center transition-colors text-[#57534E] text-sm font-medium"
               >
-                Close
+                ✕
               </button>
             </div>
 
-            {/* Modal services list */}
-            <div className="px-8 py-6">
+            {/* Service list */}
+            <div className="px-7 py-5 overflow-y-auto flex-1">
               {modalServices.length > 0 ? (
-                <ul className="space-y-4">
-                  {modalServices.map((s, i) => (
+                <ul className="space-y-3.5">
+                  {modalServices.map((s) => (
                     <li
                       key={s.id}
-                      className="flex justify-between items-center gap-4 pb-4 border-b border-[#B8860B]/10 last:border-0 last:pb-0"
-                      style={{ animationDelay: `${i * 50}ms` }}
+                      className="flex justify-between items-center gap-4 pb-3.5 border-b border-[#F0EBE3] last:border-0 last:pb-0"
                     >
-                      <span className="text-gray-300 text-sm font-sans">{s.name}</span>
-                      <span className="text-[#B8860B] text-sm font-sans whitespace-nowrap">{s.price_label}</span>
+                      <p className="font-sans font-medium text-sm text-[#1C1917]">{s.name}</p>
+                      <span className="font-sans text-sm font-bold whitespace-nowrap" style={{ color: meta.color }}>
+                        {s.price_label}
+                      </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-gray-600 text-sm font-sans">No services available.</p>
+                <p className="text-[#A8A29E] text-sm font-sans">No services listed yet.</p>
               )}
             </div>
 
-            {/* Modal footer - Book button */}
-            <div className="sticky bottom-0 bg-[#0a0a0a] border-t border-[#B8860B]/20 px-8 py-5">
-              import Link from 'next/link';
-
-<Link href="/booking" className="w-full block py-3 bg-[#B8860B] text-black text-[11px] uppercase tracking-[0.4em] font-sans hover:bg-[#d4a017] transition-colors duration-300 text-center">
-  Book an Appointment
-</Link>
-              
+            {/* Modal footer */}
+            <div className="px-7 py-5 border-t border-[#F0EBE3]">
+              <button
+                onClick={scrollToBooking}
+                className="w-full py-3 rounded-full font-sans font-semibold text-sm text-white transition-colors"
+                style={{ backgroundColor: meta.color }}
+              >
+                Book {meta.label} Appointment
+              </button>
             </div>
           </div>
         </div>

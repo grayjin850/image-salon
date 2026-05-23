@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
-import { Cormorant_Garamond, Raleway } from 'next/font/google';
+import { Cormorant_Garamond, Plus_Jakarta_Sans } from 'next/font/google';
 import { Nav } from '@/components/layout/nav';
 import { Footer } from '@/components/layout/footer';
 import './globals.css';
 import { Cursor } from '@/components/ui/cursor';
-import { headers } from 'next/headers';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -13,9 +12,9 @@ const cormorant = Cormorant_Garamond({
   variable: '--font-display',
 });
 
-const raleway = Raleway({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600'],
+  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-sans',
 });
 
@@ -30,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: '#B8860B',
+  themeColor: '#4A7C59',
 };
 
 export default function RootLayout({
@@ -40,7 +39,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${cormorant.variable} ${raleway.variable} bg-black text-white antialiased`}>
+      <body className={`${cormorant.variable} ${jakarta.variable} bg-[#FAF7F2] text-[#1C1917] antialiased`}>
         <Cursor />
          <Nav />
         <main>{children}</main>
