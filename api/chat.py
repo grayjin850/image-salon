@@ -47,6 +47,7 @@ SYSTEM_PROMPT_TEMPLATE = (
     "  → Service needed\n"
     "  → Address\n"
     "  → Preferred date (ask naturally, e.g. 'What date works best for you?')\n"
+    "  → Preferred time (ask e.g. 'What time works best for you?') — MUST be a real time like 10 AM or 2 PM, never TBD or 'to be confirmed'\n"
     "STEP 2 — After all info collected, present availability:\n"
     "  → Say: 'I have [date] available for [service]. Does that work for you?'\n"
     "STEP 3 — Show this exact confirmation summary (do NOT call book_appointment yet):\n"
@@ -216,22 +217,53 @@ def _normalize_time(time_str):
     return None
 
 
+def _is_valid_uuid(s):
+    """Return True only if s looks like a real UUID (not a placeholder string)."""
+    return bool(s and re.match(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', s, re.I
+    ))
+
+
 def _extract_leaked_tool_call(content):
-    """Parse <function=name>{...}</function> that llama models leak in content.
+    """Robust parser for <function=name>{...} that llama models leak.
+    Uses brace-counting so it works with or without a closing </function> tag.
     Returns (tool_calls_list, clean_text) or (None, original_content)."""
     if not content:
         return None, content
-    match = re.search(r'<function=(\w+)>([\s\S]*?)</function>', content)
-    if not match:
+
+    open_match = re.search(r'<function=(\w+)>', content)
+    if not open_match:
         return None, content
-    func_name = match.group(1)
-    raw_args = match.group(2).strip()
+
+    func_name = open_match.group(1)
+    rest = content[open_match.end():]
+
+    brace_start = rest.find('{')
+    if brace_start == -1:
+        return None, content
+
+    depth = 0
+    brace_end = -1
+    for i, ch in enumerate(rest):
+        if i < brace_start:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                brace_end = i + 1
+                break
+
+    raw_json = rest[brace_start:brace_end] if brace_end != -1 else rest[brace_start:]
     try:
-        args_dict = json.loads(raw_args)
+        args_dict = json.loads(raw_json)
         tool_calls = [{'function': {'name': func_name, 'arguments': json.dumps(args_dict)}}]
-        clean = (content[:match.start()] + content[match.end():]).strip()
+        suffix = rest[brace_end:] if brace_end != -1 else ''
+        suffix = re.sub(r'^\s*</function>\s*', '', suffix).strip()
+        clean = (content[:open_match.start()] + (' ' + suffix if suffix else '')).strip()
         return tool_calls, clean
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, ValueError):
         return None, content
 
 
@@ -411,14 +443,26 @@ class handler(BaseHTTPRequestHandler):
                     })
                     return
 
-                # Look up service_id by name if not provided (LLM never knows the UUID)
-                service_id = args.get('service_id') or None
+                # Look up service_id by name — LLM never knows the UUID and sometimes sends
+                # placeholder text like "highlights service ID" instead of a real UUID
+                service_id = args.get('service_id') if _is_valid_uuid(args.get('service_id')) else None
                 if not service_id and args.get('service_name'):
+                    svc_name = args['service_name']
+                    # Try full name first, then word-by-word fallback
                     svc_lookup = supabase.table('services').select('id').ilike(
-                        'name', f"%{args['service_name']}%"
+                        'name', f"%{svc_name}%"
                     ).eq('is_active', True).limit(1).execute()
                     if svc_lookup.data:
                         service_id = svc_lookup.data[0]['id']
+                    else:
+                        for word in svc_name.split():
+                            if len(word) > 3:
+                                svc_lookup2 = supabase.table('services').select('id').ilike(
+                                    'name', f"%{word}%"
+                                ).eq('is_active', True).limit(1).execute()
+                                if svc_lookup2.data:
+                                    service_id = svc_lookup2.data[0]['id']
+                                    break
 
                 existing = supabase.table('bookings').select('id').eq(
                     'client_name', args['client_name']

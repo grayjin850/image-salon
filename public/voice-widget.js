@@ -134,6 +134,7 @@
       line-height: 1.5;
       animation: aria-msg-in 0.25s ease-out;
       word-wrap: break-word;
+      white-space: pre-wrap;
     }
     .aria-msg-assistant {
       background: rgba(184, 134, 11, 0.12);
@@ -550,9 +551,27 @@
   }
 
   // ---------- STEP 6: LLM ----------
-  async function sendToLLM() {
-    setStatus('Thinking…');
-    setHint('Aria is responding…');
+  const CONFIRM_WORDS_JS = ['yes', 'yep', 'yeah', 'yup', 'ok', 'okay', 'sure', 'definitely',
+    'confirmed', 'go ahead', 'book it', "let's do it", 'please book', 'do it', 'sounds good', 'perfect'];
+
+  async function sendToLLM(retryCount) {
+    retryCount = retryCount || 0;
+
+    // Detect if user is confirming a booking so we show the right status
+    const lastUser = [...messages].reverse().find(m => m.role === 'user');
+    const isConfirming = lastUser && CONFIRM_WORDS_JS.some(w => lastUser.content.toLowerCase().includes(w));
+
+    if (isConfirming && retryCount === 0) {
+      setStatus('Saving…');
+      setHint('Saving your appointment…');
+    } else if (retryCount > 0) {
+      setStatus('Reconnecting…');
+      setHint('Please hold…');
+    } else {
+      setStatus('Thinking…');
+      setHint('Aria is responding…');
+    }
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -565,7 +584,13 @@
       if (data.booked) setStatus('Booked ✓');
       await speakText(data.text);
     } catch (err) {
-      const errMsg = "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
+      if (retryCount < 2) {
+        await new Promise(r => setTimeout(r, 2500));
+        return sendToLLM(retryCount + 1);
+      }
+      const errMsg = isConfirming
+        ? "I'm sorry, I had trouble saving your booking. Your details are still here — just say \"book it\" and I'll try again!"
+        : "I'm sorry, I'm having a little trouble right now. Please give me a moment and try again.";
       addMsg('assistant', errMsg);
       await speakText(errMsg);
     }
