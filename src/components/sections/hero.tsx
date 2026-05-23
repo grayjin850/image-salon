@@ -1,7 +1,14 @@
 'use client';
 
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
+
+const SLIDES = [
+  { src: '/images/hero1.jpg', label: 'Hair Highlights' },
+  { src: '/images/hero2.jpg', label: 'Hair Styling' },
+  { src: '/images/hero3.jpg', label: 'Hair Color' },
+  { src: '/images/hero4.jpg', label: 'Image Salon & Spa' },
+];
 
 const STATS = [
   { value: '500+', label: 'Happy Clients' },
@@ -10,6 +17,28 @@ const STATS = [
 ];
 
 export function Hero() {
+  const [current, setCurrent] = useState(0);
+  const [prev, setPrev] = useState<number | null>(null);
+  const [animating, setAnimating] = useState(false);
+
+  const goTo = useCallback(
+    (index: number) => {
+      if (animating || index === current) return;
+      setPrev(current);
+      setCurrent(index);
+      setAnimating(true);
+      setTimeout(() => { setPrev(null); setAnimating(false); }, 900);
+    },
+    [animating, current]
+  );
+
+  const next = useCallback(() => goTo((current + 1) % SLIDES.length), [current, goTo]);
+
+  useEffect(() => {
+    const t = setInterval(next, 5000);
+    return () => clearInterval(t);
+  }, [next]);
+
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
@@ -37,8 +66,10 @@ export function Hero() {
             </div>
 
             {/* Headline */}
-            <h1 className="font-sans font-extrabold text-[#1C1917] leading-[1.08] tracking-tight mb-6"
-                style={{ fontSize: 'clamp(2.8rem, 6vw, 4.5rem)' }}>
+            <h1
+              className="font-sans font-extrabold text-[#1C1917] leading-[1.08] tracking-tight mb-6"
+              style={{ fontSize: 'clamp(2.8rem, 6vw, 4.5rem)' }}
+            >
               Transform<br />
               Your Look at<br />
               <span className="text-[#4A7C59]">Image Salon</span>
@@ -50,7 +81,7 @@ export function Hero() {
               Walk in, walk out beautiful.
             </p>
 
-            {/* CTA row */}
+            {/* CTAs */}
             <div className="flex flex-wrap gap-3 mb-14">
               <button
                 onClick={() => scrollTo('booking')}
@@ -69,7 +100,7 @@ export function Hero() {
               </button>
             </div>
 
-            {/* Stats row */}
+            {/* Stats */}
             <div className="flex items-center gap-0 pt-8 border-t border-[#E8E1D9] w-fit">
               {STATS.map((stat, i) => (
                 <div key={stat.label} className="flex items-center gap-0">
@@ -77,37 +108,63 @@ export function Hero() {
                     <p className="font-sans font-bold text-2xl text-[#1C1917] leading-none">{stat.value}</p>
                     <p className="text-[#A8A29E] text-xs font-sans font-medium mt-0.5">{stat.label}</p>
                   </div>
-                  {i < STATS.length - 1 && (
-                    <div className="ml-8 w-px h-10 bg-[#E8E1D9]" />
-                  )}
+                  {i < STATS.length - 1 && <div className="ml-8 w-px h-10 bg-[#E8E1D9]" />}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* ── Right: Hero Image ── */}
+          {/* ── Right: Slideshow ── */}
           <div className="relative order-1 lg:order-2 flex items-center justify-center">
-            {/* Decorative glow ring */}
-            <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-[#4A7C59]/15 via-transparent to-[#D4A853]/15 blur-2xl" />
+            {/* Glow ring behind the frame */}
+            <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-[#4A7C59]/15 via-transparent to-[#D4A853]/15 blur-2xl pointer-events-none" />
 
-            {/* Main image */}
-            <div className="relative w-full max-w-[480px] rounded-[2rem] overflow-hidden shadow-2xl shadow-[#1C1917]/10">
-              <div className="aspect-[4/5]">
-                <Image
-                  src="/images/hero1.jpg"
-                  alt="Image Salon — Expert Styling"
-                  fill
-                  sizes="(max-width: 768px) 90vw, 480px"
-                  className="object-cover object-center"
-                  priority
-                />
-                {/* Subtle overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1C1917]/20 via-transparent to-transparent" />
+            {/* Slide frame */}
+            <div className="relative w-full max-w-[480px] rounded-[2rem] overflow-hidden shadow-2xl shadow-[#1C1917]/10 aspect-[4/5]">
+              {SLIDES.map((slide, i) => (
+                <div
+                  key={slide.src}
+                  className="absolute inset-0 transition-opacity duration-[900ms] ease-in-out"
+                  style={{
+                    opacity: i === current ? 1 : i === prev ? 0 : 0,
+                    zIndex: i === current ? 1 : i === prev ? 0 : -1,
+                  }}
+                >
+                  <Image
+                    src={slide.src}
+                    alt={slide.label}
+                    fill
+                    sizes="(max-width: 768px) 90vw, 480px"
+                    className="object-cover object-center"
+                    priority={i === 0}
+                  />
+                </div>
+              ))}
+              {/* Bottom overlay — slide label + dots */}
+              <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-[#1C1917]/40 to-transparent px-5 pb-4 pt-10 flex items-end justify-between">
+                <p className="font-sans text-white/80 text-xs font-medium tracking-wide">
+                  {SLIDES[current].label}
+                </p>
+                <div className="flex gap-1.5">
+                  {SLIDES.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => goTo(i)}
+                      className="rounded-full transition-all duration-300"
+                      style={{
+                        width: i === current ? '20px' : '6px',
+                        height: '6px',
+                        background: i === current ? 'white' : 'rgba(255,255,255,0.4)',
+                      }}
+                      aria-label={`Slide ${i + 1}`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Floating accent card — bottom left */}
-            <div className="absolute -bottom-4 -left-4 lg:-left-8 bg-white rounded-2xl shadow-lg px-4 py-3.5 flex items-center gap-3 border border-[#E8E1D9]">
+            {/* Floating card — bottom left */}
+            <div className="absolute -bottom-4 -left-4 lg:-left-8 bg-white rounded-2xl shadow-lg px-4 py-3.5 flex items-center gap-3 border border-[#E8E1D9] z-20">
               <div className="w-10 h-10 rounded-xl bg-[#EFF5F1] flex items-center justify-center text-xl">✂</div>
               <div>
                 <p className="font-sans font-bold text-sm text-[#1C1917] leading-tight">Expert Stylists</p>
@@ -115,8 +172,8 @@ export function Hero() {
               </div>
             </div>
 
-            {/* Floating accent card — top right */}
-            <div className="absolute -top-4 -right-4 lg:-right-6 bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center gap-2.5 border border-[#E8E1D9]">
+            {/* Floating card — top right */}
+            <div className="absolute -top-4 -right-4 lg:-right-6 bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center gap-2.5 border border-[#E8E1D9] z-20">
               <span className="text-[#D4A853] text-lg">⭐</span>
               <div>
                 <p className="font-sans font-bold text-sm text-[#1C1917] leading-tight">5.0 Rating</p>
