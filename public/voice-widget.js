@@ -167,6 +167,45 @@
       border-bottom-right-radius: 4px;
       animation: none;
     }
+    .aria-msg-loading {
+      opacity: 0.8;
+      animation: none !important;
+    }
+    .aria-typing-dots {
+      display: inline-flex;
+      gap: 3px;
+      vertical-align: middle;
+      margin-left: 4px;
+    }
+    .aria-typing-dots span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #A8A29E;
+      display: inline-block;
+      animation: aria-dot 1.4s infinite ease-in-out;
+      opacity: 0;
+    }
+    .aria-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .aria-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes aria-dot {
+      0%, 80%, 100% { opacity: 0; transform: scale(0.8); }
+      40%            { opacity: 1; transform: scale(1); }
+    }
+    .aria-booked-banner {
+      align-self: stretch;
+      background: linear-gradient(135deg, #EFF5F1 0%, #D9EDDF 100%);
+      border: 1px solid #B7D9C2;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: #1C5E30;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: aria-msg-in 0.3s ease-out;
+    }
 
     /* ── Visualizer ── */
     .aria-visualizer {
@@ -491,6 +530,7 @@
   let intentionalStop = false;
   let restartTimer = null;
   let interimMsgEl = null;
+  let loadingMsgEl = null;
   let pendingGreeting = null;
   let recognition = null;
   let currentAudio = null;
@@ -536,6 +576,21 @@
       interimMsgEl.remove();
       interimMsgEl = null;
     }
+  }
+
+  function showLoadingMsg(text) {
+    if (!transcript) return;
+    if (loadingMsgEl) loadingMsgEl.remove();
+    loadingMsgEl = document.createElement('div');
+    loadingMsgEl.className = 'aria-msg aria-msg-assistant aria-msg-loading';
+    loadingMsgEl.innerHTML = text +
+      '<span class="aria-typing-dots"><span></span><span></span><span></span></span>';
+    transcript.appendChild(loadingMsgEl);
+    transcript.scrollTop = transcript.scrollHeight;
+  }
+
+  function removeLoadingMsg() {
+    if (loadingMsgEl) { loadingMsgEl.remove(); loadingMsgEl = null; }
   }
 
   function animateBars(active) {
@@ -674,19 +729,25 @@
   async function sendToLLM(retryCount) {
     retryCount = retryCount || 0;
 
-    // Detect if user is confirming a booking so we show the right status
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
     const isConfirming = lastUser && CONFIRM_WORDS_JS.some(w => lastUser.content.toLowerCase().includes(w));
 
     if (isConfirming && retryCount === 0) {
       setStatus('Saving…');
       setHint('Saving your appointment…');
+      showLoadingMsg('One moment, I\'m reserving your appointment');
+    } else if (retryCount > 0 && isConfirming) {
+      setStatus('Reconnecting…');
+      setHint('Almost there…');
+      showLoadingMsg('Reconnecting, almost there');
     } else if (retryCount > 0) {
       setStatus('Reconnecting…');
       setHint('Please hold…');
+      showLoadingMsg('Reconnecting, please hold');
     } else {
       setStatus('Thinking…');
       setHint('Aria is responding…');
+      showLoadingMsg('Let me check on that');
     }
 
     try {
@@ -697,16 +758,31 @@
       });
       const data = await res.json();
       if (!res.ok || !data.text) throw new Error(data.error || 'no response');
+
+      removeLoadingMsg();
       addMsg('assistant', data.text);
-      if (data.booked) setStatus('Booked ✓');
+
+      if (data.booked) {
+        setStatus('Booked ✓');
+        // Show a booking success banner in the transcript
+        const banner = document.createElement('div');
+        banner.className = 'aria-booked-banner';
+        banner.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Appointment confirmed!';
+        if (transcript) {
+          transcript.appendChild(banner);
+          transcript.scrollTop = transcript.scrollHeight;
+        }
+      }
+
       await speakText(data.text);
     } catch (err) {
       if (retryCount < 2) {
         await new Promise(r => setTimeout(r, 2500));
         return sendToLLM(retryCount + 1);
       }
+      removeLoadingMsg();
       const errMsg = isConfirming
-        ? "I'm sorry, I had trouble saving your booking. Your details are still here — just say \"book it\" and I'll try again!"
+        ? "I'm so sorry, I had a little trouble saving your booking. Your details are still here — just say \"book it\" and I'll try again!"
         : "I'm sorry, I'm having a little trouble right now. Please give me a moment and try again.";
       addMsg('assistant', errMsg);
       await speakText(errMsg);
