@@ -48,6 +48,8 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             audio = asyncio.run(_synthesize(text))
+            if not audio:
+                raise ValueError("TTS synthesis returned empty audio")
 
             self.send_response(200)
             self._cors()

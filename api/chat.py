@@ -199,7 +199,7 @@ def _normalize_time(time_str):
     if re.match(r'^\d{1,2}:\d{2}$', s):
         h, m = s.split(':')
         return f"{int(h):02d}:{m}:00"
-    for fmt in ('%I %p', '%I:%M %p', '%H:%M', '%I%p', '%I:%M%p'):
+    for fmt in ('%I:%M:%S %p', '%I %p', '%I:%M %p', '%H:%M:%S', '%H:%M', '%I%p', '%I:%M%p'):
         try:
             parsed = datetime.strptime(s.upper(), fmt)
             return parsed.strftime('%H:%M:%S')
@@ -231,7 +231,7 @@ def _extract_leaked_tool_call(content):
     if not content:
         return None, content
 
-    open_match = re.search(r'<function=(\w+)>', content)
+    open_match = re.search(r'<?[Ff]unction=(\w+)>', content)
     if not open_match:
         return None, content
 

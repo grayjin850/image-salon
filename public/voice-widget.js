@@ -476,9 +476,21 @@
   }
 
   // ---------- STEP 5: TTS ----------
-  // Uses AudioContext (not HTMLAudioElement) so playback works outside user-gesture context.
-  // AudioContext stays 'running' after first resume — no gesture needed for subsequent calls.
-  async function speakText(text) {
+  // Uses AudioContext for reliable cross-call playback.
+  // retryCount is internal — callers always call speakText(text) with one arg.
+  async function speakText(text, retryCount) {
+    retryCount = retryCount || 0;
+
+    const resetState = () => {
+      isSpeaking = false;
+      processingUtterance = false;
+      intentionalStop = false;
+      if (micBtn) micBtn.classList.remove('aria-speaking');
+      animateBars(false);
+      setStatus('Ready');
+      setHint('Tap to speak');
+    };
+
     try {
       isSpeaking = true;
       setStatus('Speaking…');
@@ -500,6 +512,15 @@
       }
       if (!audioCtx) throw new Error('AudioContext unavailable');
 
+      // If context is still suspended after resume, skip audio so conversation doesn't hang
+      if (audioCtx.state !== 'running') {
+        resetState();
+        if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
+          setTimeout(startListening, 400);
+        }
+        return false;
+      }
+
       const arrayBuffer = await res.arrayBuffer();
       const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
@@ -518,13 +539,7 @@
         if (cleanupDone) return;
         cleanupDone = true;
         currentAudio = null;
-        isSpeaking = false;
-        processingUtterance = false;
-        intentionalStop = false;
-        if (micBtn) micBtn.classList.remove('aria-speaking');
-        animateBars(false);
-        setStatus('Ready');
-        setHint('Tap to speak');
+        resetState();
         if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
           setTimeout(startListening, 400);
         }
@@ -535,14 +550,15 @@
       return true;
 
     } catch (err) {
-      // TTS fetch/network/decode failure — reset state and keep conversation loop alive
-      isSpeaking = false;
-      processingUtterance = false;
-      intentionalStop = false;
-      if (micBtn) micBtn.classList.remove('aria-speaking');
-      animateBars(false);
-      setStatus('Ready');
-      setHint('Tap to speak');
+      // Retry once on TTS failure (edge_tts can return empty audio on network hiccup)
+      if (retryCount < 1) {
+        resetState();
+        isSpeaking = true;
+        await new Promise(r => setTimeout(r, 1200));
+        return speakText(text, retryCount + 1);
+      }
+      // Final failure — reset and keep conversation alive
+      resetState();
       if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
         setTimeout(startListening, 400);
       }
