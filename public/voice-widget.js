@@ -475,6 +475,8 @@
   }
 
   // ---------- STEP 5: TTS ----------
+  // Uses AudioContext (not HTMLAudioElement) so playback works outside user-gesture context.
+  // AudioContext stays 'running' after first resume — no gesture needed for subsequent calls.
   async function speakText(text) {
     try {
       isSpeaking = true;
@@ -488,21 +490,33 @@
         body: JSON.stringify({ text }),
       });
       if (!res.ok) throw new Error(`TTS error ${res.status}`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+
+      if (!audioCtx) {
+        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        try { await audioCtx.resume(); } catch (e) {}
+      }
+      if (!audioCtx) throw new Error('AudioContext unavailable');
+
+      const arrayBuffer = await res.arrayBuffer();
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
       if (currentAudio) {
-        try { currentAudio.pause(); } catch (e) {}
+        try { currentAudio.stop(); } catch (e) {}
         currentAudio = null;
       }
 
-      const audio = new Audio(url);
-      currentAudio = audio;
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtx.destination);
+      currentAudio = source;
 
       let cleanupDone = false;
       const cleanup = () => {
         if (cleanupDone) return;
         cleanupDone = true;
+        currentAudio = null;
         isSpeaking = false;
         processingUtterance = false;
         intentionalStop = false;
@@ -510,28 +524,17 @@
         animateBars(false);
         setStatus('Ready');
         setHint('Tap to speak');
-        URL.revokeObjectURL(url);
         if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
           setTimeout(startListening, 400);
         }
       };
 
-      audio.onended = cleanup;
-      audio.onerror = cleanup;
+      source.onended = cleanup;
+      source.start(0);
+      return true;
 
-      try {
-        // Resume AudioContext if suspended by browser autoplay policy
-        if (audioCtx && audioCtx.state === 'suspended') {
-          try { await audioCtx.resume(); } catch (e) {}
-        }
-        await audio.play();
-        return true;
-      } catch (err) {
-        cleanup();
-        return false;
-      }
     } catch (err) {
-      // TTS fetch/network failure — reset state and keep conversation loop alive
+      // TTS fetch/network/decode failure — reset state and keep conversation loop alive
       isSpeaking = false;
       processingUtterance = false;
       intentionalStop = false;
@@ -747,7 +750,8 @@
       try { recognition.stop(); } catch (e) {}
     }
     if (isSpeaking && currentAudio) {
-      try { currentAudio.pause(); } catch (e) {}
+      try { currentAudio.stop(); } catch (e) {}
+      currentAudio = null;
       isSpeaking = false;
       if (micBtn) micBtn.classList.remove('aria-speaking');
     }
@@ -770,7 +774,15 @@
     vizBars = document.querySelectorAll('.aria-bar');
 
     // STEP 11: Event listeners
-    micBtn.addEventListener('click', () => startListening(true));
+    micBtn.addEventListener('click', async () => {
+      if (!audioCtx) {
+        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        try { await audioCtx.resume(); } catch (e) {}
+      }
+      startListening(true);
+    });
     closeBtn.addEventListener('click', closeOverlay);
     floatBtn.addEventListener('click', openOverlay);
 
@@ -788,10 +800,27 @@
       sendToLLM();
     }
 
-    textInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTypedMessage(); }
+    textInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!audioCtx) {
+          try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e2) {}
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          try { await audioCtx.resume(); } catch (e2) {}
+        }
+        sendTypedMessage();
+      }
     });
-    sendBtn.addEventListener('click', sendTypedMessage);
+    sendBtn.addEventListener('click', async () => {
+      if (!audioCtx) {
+        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        try { await audioCtx.resume(); } catch (e) {}
+      }
+      sendTypedMessage();
+    });
 
     // Mobile keyboard: push input bar above keyboard when it opens
     if (window.visualViewport) {
