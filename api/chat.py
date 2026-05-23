@@ -124,11 +124,8 @@ GROQ_TRIGGER_CODES = {429, 500, 503}
 OPENROUTER_SKIP_CODES = {402, 404, 429}
 ANTHROPIC_TRIGGER_CODES = {429, 500, 503}
 FREE_MODELS = [
-    "openai/gpt-oss-20b:free",
-    "deepseek/deepseek-v4-flash:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
+    "meta-llama/llama-3.1-8b-instruct:free",
     "meta-llama/llama-3.2-3b-instruct:free",
-    "google/gemma-4-31b-it:free",
 ]
 
 
