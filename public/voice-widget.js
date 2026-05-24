@@ -641,6 +641,12 @@
 
     try {
       isSpeaking = true;
+      // Kill any active recognition immediately so mic can't pick up Aria's own voice
+      if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
+      if (isListening && recognition) {
+        intentionalStop = true;
+        try { recognition.stop(); } catch (e) {}
+      }
       setStatus('Speaking…');
       if (micBtn) micBtn.classList.add('aria-speaking');
       animateBars(true);
@@ -664,7 +670,7 @@
       if (audioCtx.state !== 'running') {
         resetState();
         if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
-          setTimeout(startListening, 400);
+          setTimeout(startListening, 800);
         }
         return false;
       }
@@ -689,7 +695,7 @@
         currentAudio = null;
         resetState();
         if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
-          setTimeout(startListening, 400);
+          setTimeout(startListening, 800);
         }
       };
 
@@ -876,7 +882,7 @@
       restartTimer = setTimeout(() => {
         restartTimer = null;
         clearInterim();
-        if (conversationActive && !isSpeaking && !isListening) {
+        if (conversationActive && !isSpeaking && !isListening && !processingUtterance) {
           recognition = initRecognition();
           if (recognition) {
             intentionalStop = false;
