@@ -7,6 +7,9 @@
 
   if (window.location.pathname.startsWith('/admin')) return;
 
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+
   // ---------- STEP 1: CSS ----------
   const css = `
     /* ── Aria SaaS Widget — Cream & Sage theme ── */
@@ -641,11 +644,13 @@
 
     try {
       isSpeaking = true;
-      // Kill any active recognition immediately so mic can't pick up Aria's own voice
-      if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
-      if (isListening && recognition) {
-        intentionalStop = true;
-        try { recognition.stop(); } catch (e) {}
+      // Mobile only: kill mic immediately so speaker audio isn't picked up by recognition
+      if (isMobile) {
+        if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
+        if (isListening && recognition) {
+          intentionalStop = true;
+          try { recognition.stop(); } catch (e) {}
+        }
       }
       setStatus('Speaking…');
       if (micBtn) micBtn.classList.add('aria-speaking');
@@ -670,7 +675,7 @@
       if (audioCtx.state !== 'running') {
         resetState();
         if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
-          setTimeout(startListening, 800);
+          setTimeout(startListening, isMobile ? 800 : 400);
         }
         return false;
       }
@@ -695,7 +700,7 @@
         currentAudio = null;
         resetState();
         if (conversationActive && overlay && !overlay.classList.contains('aria-hidden')) {
-          setTimeout(startListening, 800);
+          setTimeout(startListening, isMobile ? 800 : 400);
         }
       };
 
@@ -882,7 +887,7 @@
       restartTimer = setTimeout(() => {
         restartTimer = null;
         clearInterim();
-        if (conversationActive && !isSpeaking && !isListening && !processingUtterance) {
+        if (conversationActive && !isSpeaking && !isListening && (!isMobile || !processingUtterance)) {
           recognition = initRecognition();
           if (recognition) {
             intentionalStop = false;
