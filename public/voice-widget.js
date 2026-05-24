@@ -432,23 +432,28 @@
       to   { transform: translateY(0) scale(1); opacity: 1; }
     }
 
-    /* ── Mobile full-screen ── */
+    /* ── Mobile bottom sheet ── */
     @media (max-width: 640px) {
       #aria-overlay {
         align-items: flex-end;
         padding: 0;
+        background: rgba(28, 25, 23, 0.28);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
       }
       #aria-widget {
         width: 100vw;
         max-width: 100vw;
-        height: 100vh;
-        height: 100dvh;
+        height: 80vh;
+        height: 80dvh;
+        max-height: 85dvh;
         margin: 0;
-        border-radius: 0;
+        border-radius: 24px 24px 0 0;
         border: none;
         display: flex;
         flex-direction: column;
         animation: aria-slide-up 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+        box-shadow: 0 -16px 64px rgba(28, 25, 23, 0.22), 0 -1px 0 rgba(255,255,255,0.08);
       }
       .aria-transcript {
         flex: 1;

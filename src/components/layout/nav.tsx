@@ -42,7 +42,7 @@ export function Nav() {
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
             ? 'bg-white/95 backdrop-blur-md border-b border-[#E8E1D9] shadow-sm'
-            : 'bg-[#FAF7F2]/80 backdrop-blur-sm'
+            : 'bg-[#FAF7F2]/88 backdrop-blur-md border-b border-[#E8E1D9]/40 shadow-[0_2px_16px_rgba(28,25,23,0.06)] md:bg-[#FAF7F2]/80 md:backdrop-blur-sm md:border-b-0 md:shadow-none'
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-8">
@@ -56,8 +56,8 @@ export function Nav() {
               height={36}
               className="object-contain"
             />
-            <div className="hidden sm:block leading-tight">
-              <p className="font-sans font-bold text-[#1C1917] text-sm tracking-tight">Image Salon</p>
+            <div className="block leading-tight">
+              <p className="font-sans font-bold text-[#1C1917] text-[13px] tracking-tight">Image Salon</p>
               <p className="font-sans text-[9px] text-[#4A7C59] tracking-[0.18em] uppercase">& Spa</p>
             </div>
           </Link>

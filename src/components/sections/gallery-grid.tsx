@@ -102,6 +102,7 @@ export function GalleryGrid() {
               src={item.image_url}
               alt={item.caption || 'Gallery image'}
               fill
+              unoptimized
               sizes="(max-width: 768px) 50vw, 33vw"
               className="object-cover transition-transform duration-700 group-hover:scale-110"
             />
@@ -271,6 +272,7 @@ export function GalleryGrid() {
                 src={selected.image_url}
                 alt={selected.caption || 'Gallery image'}
                 fill
+                unoptimized
                 className="object-contain"
                 sizes="(max-width: 768px) 95vw, 80vw"
                 priority

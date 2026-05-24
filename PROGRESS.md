@@ -209,3 +209,24 @@ When /api/tts fetch throws (network error, timeout), the outer catch block ran c
 - No build step — static JS + Python serverless changes only
 
 ---
+
+## Mobile UX Polish — 2026-05-24
+
+### Tasks Completed
+- [x] Task 1 — Aria mobile overlay → bottom sheet (claude-sonnet-4-6)
+- [x] Task 2 — Mobile header premium feel (claude-sonnet-4-6)
+
+### Files Modified
+- `public/voice-widget.js` — Mobile CSS block: widget height 100dvh → 80dvh, border-radius 0 → 24px 24px 0 0, overlay background opacity reduced (0.45→0.28), backdrop-filter increased (6px→10px), added top box-shadow
+- `src/components/layout/nav.tsx` — Brand name: `hidden sm:block` → `block` (now always visible); unscrolled mobile state: stronger blur (backdrop-blur-md), subtle border/shadow; desktop unchanged via md: overrides
+
+### Key Decisions
+- 80dvh chosen over 85dvh — gives ~20vh glimpse of page, avoids cramping chat content
+- Always-visible brand name is the single biggest impact change for the "plain header" feel
+- md: override pattern used in Tailwind to keep desktop nav unchanged
+
+### Verification Result
+- Command run: npx tsc --noEmit
+- Result: PASSED — no TypeScript errors
+
+---
