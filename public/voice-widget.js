@@ -970,7 +970,14 @@
   }
 
   function closeOverlay() {
-    if (overlay) overlay.classList.add('aria-hidden');
+    if (overlay) {
+      overlay.classList.add('aria-hidden');
+      // Reset any viewport-pinning styles set by the keyboard listener
+      overlay.style.top = '';
+      overlay.style.height = '';
+    }
+    const widget = document.getElementById('aria-widget');
+    if (widget) { widget.style.height = ''; widget.style.maxHeight = ''; }
     if (floatBtn) floatBtn.style.display = 'flex';
     if (isListening && recognition) {
       try { recognition.stop(); } catch (e) {}
@@ -1019,11 +1026,13 @@
       const text = textInput.value.trim();
       if (!text || isSpeaking || processingUtterance) return;
       textInput.value = '';
+      textInput.dispatchEvent(new Event('input')); // force clear on iOS Safari
       conversationActive = true;
       clearInterim();
       addMsg('user', text);
       processingUtterance = true;
       sendToLLM();
+      if (transcript) transcript.scrollTop = transcript.scrollHeight;
     }
 
     textInput.addEventListener('keydown', async (e) => {
@@ -1048,15 +1057,28 @@
       sendTypedMessage();
     });
 
-    // Mobile keyboard: push input bar above keyboard when it opens
+    // Mobile keyboard: pin overlay to visual viewport so keyboard never covers the chat
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => {
-        const textWrap = document.querySelector('.aria-text-wrap');
-        if (textWrap && overlay && !overlay.classList.contains('aria-hidden')) {
-          const keyboardHeight = Math.max(0, window.innerHeight - window.visualViewport.height);
-          textWrap.style.paddingBottom = Math.max(16, keyboardHeight) + 'px';
+      const syncViewport = () => {
+        if (!overlay || overlay.classList.contains('aria-hidden')) return;
+        const widget = document.getElementById('aria-widget');
+        const vvH = window.visualViewport.height;
+        const vvTop = window.visualViewport.offsetTop;
+        // Reposition overlay to only cover the area above the keyboard
+        overlay.style.top = vvTop + 'px';
+        overlay.style.height = vvH + 'px';
+        if (widget) {
+          const keyboardOpen = (window.innerHeight - vvH) > 80;
+          widget.style.height = keyboardOpen ? Math.min(vvH - 8, vvH * 0.97) + 'px' : '';
+          widget.style.maxHeight = keyboardOpen ? vvH + 'px' : '';
         }
-      });
+        // Always keep latest message in view
+        if (transcript) {
+          requestAnimationFrame(() => { transcript.scrollTop = transcript.scrollHeight; });
+        }
+      };
+      window.visualViewport.addEventListener('resize', syncViewport);
+      window.visualViewport.addEventListener('scroll', syncViewport);
     }
 
     // Play greeting on first user gesture (unlocks browser audio)
