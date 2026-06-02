@@ -62,6 +62,9 @@ SYSTEM_PROMPT_TEMPLATE = (
     "CRITICAL: NEVER call book_appointment before completing Step 3 and receiving explicit yes.\n"
     "- Business hours: Monday-Saturday 9AM-6PM\n"
     "- Same-day bookings allowed if time slot is available\n\n"
+    "POST-BOOKING:\n"
+    "- Once you say 'Perfect! I've booked your...', the booking is DONE. NEVER call book_appointment again in the same conversation.\n"
+    "- If the user says no, thanks, goodbye, or closes the conversation: reply warmly (e.g. 'Wonderful! We look forward to seeing you!') — do NOT re-summarize the booking or ask to confirm again.\n\n"
     "PERSONALITY:\n"
     "- Warm, elegant, concise — max 2 sentences per response\n"
     "- If asked about services not in the list, say \"Let me check on that for you\"\n"
@@ -423,6 +426,18 @@ class handler(BaseHTTPRequestHandler):
                     args = json.loads(tool_calls[0]['function']['arguments'])
                 except (json.JSONDecodeError, KeyError, IndexError):
                     self._send_json(200, {"text": "I'm here to help! What would you like to know?"})
+                    return
+
+                # RE-BOOKING GUARD: if this conversation already has a confirmed booking,
+                # don't re-show the confirmation form or attempt to write again.
+                # llama models often re-fire book_appointment after the user says "no thanks".
+                booking_already_confirmed = any(
+                    msg.get('role') == 'assistant' and "I've booked your" in msg.get('content', '')
+                    for msg in messages
+                )
+                if booking_already_confirmed:
+                    service = args.get('service_name', 'your appointment')
+                    self._send_json(200, {"text": f"Your {service} is already confirmed! We look forward to seeing you. Is there anything else I can help you with?"})
                     return
 
                 # BOOKING GATE: never write to Supabase without explicit user confirmation
